@@ -1,0 +1,56 @@
+{
+  "name": "@mrdoge/protocol",
+  "version": "0.0.0",
+  "description": "Wire-format spec and shared Zod schemas for the Mr. Doge SDK protocol",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/protocol",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrdoge/sdk.git",
+    "directory": "packages/protocol"
+  },
+  "bugs": {
+    "url": "https://github.com/mrdoge/sdk/issues"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./schema.json": "./dist/schema.json"
+  },
+  "files": [
+    "dist",
+    "PROTOCOL.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && tsx scripts/emit-json-schema.ts",
+    "build:lib": "tsup",
+    "build:schema": "tsx scripts/emit-json-schema.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'TODO: vitest'",
+    "lint": "echo 'TODO: eslint'"
+  },
+  "keywords": [
+    "mrdoge",
+    "sports",
+    "odds",
+    "websocket",
+    "json-rpc",
+    "schema"
+  ],
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "zod-to-json-schema": "^3.23.0"
+  }
+}
