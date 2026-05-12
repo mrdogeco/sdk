@@ -27,6 +27,7 @@ export const ErrorCode = z.enum([
   "not_found",
   "rate_limited",
   "subscription_limit_exceeded",
+  "connection_limit_exceeded",
   "unavailable",
   "internal_error",
   "protocol_error",

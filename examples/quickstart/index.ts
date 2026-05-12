@@ -17,7 +17,7 @@
 
 import { MrDoge, RateLimitError, UnauthorizedError } from "@mrdoge/sdk"
 
-const apiKey = process.env.MRDOGE_API_KEY
+const apiKey = "sk_live_"
 if (!apiKey) {
   console.error("Set MRDOGE_API_KEY in your environment. Get a key at https://mrdoge.ai")
   process.exit(1)

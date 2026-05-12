@@ -1,6 +1,6 @@
 {
   "name": "@mrdoge/protocol",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Wire-format spec and shared Zod schemas for the Mr. Doge SDK protocol",
   "license": "Apache-2.0",
   "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/protocol",
@@ -34,7 +34,10 @@
     "build:schema": "tsx scripts/emit-json-schema.ts",
     "typecheck": "tsc --noEmit",
     "test": "echo 'TODO: vitest'",
-    "lint": "echo 'TODO: eslint'"
+    "lint": "echo 'TODO: eslint'",
+    "prepublishOnly": "npm run build",
+    "release": "npm publish --access public",
+    "release:dry": "npm publish --access public --dry-run"
   },
   "keywords": [
     "mrdoge",

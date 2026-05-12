@@ -18,6 +18,7 @@ export {
   ValidationError,
   RateLimitError,
   SubscriptionLimitError,
+  ConnectionLimitError,
   UnavailableError,
   InternalError,
   ProtocolError,

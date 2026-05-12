@@ -291,6 +291,7 @@ Error codes are stable strings. SDKs should map them to typed error classes.
 | `not_found` | 404 | Resource (e.g. `matches.get { id }`) does not exist |
 | `rate_limited` | 429 | Per-key rate limit hit. `data: { retryAfterMs, limit, remaining, resetAt }` |
 | `subscription_limit_exceeded` | 429 | Too many concurrent subscriptions on this connection |
+| `connection_limit_exceeded` | 429 | Per-key concurrent connection cap reached for this tier. `data: { current, max }` — close another connection or upgrade |
 | `unavailable` | 503 | Temporary downstream issue. Client SHOULD retry with backoff |
 | `internal_error` | 500 | Server-side fault. `data.requestId` for support |
 | `protocol_error` | — | Catch-all for envelope violations the client should fix |

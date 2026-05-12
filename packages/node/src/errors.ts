@@ -70,6 +70,18 @@ export class SubscriptionLimitError extends MrDogeError {
   }
 }
 
+export class ConnectionLimitError extends MrDogeError {
+  readonly current?: number
+  readonly max?: number
+
+  constructor(message: string, data?: unknown) {
+    super("connection_limit_exceeded", message, data)
+    const d = (data ?? {}) as { current?: number; max?: number }
+    this.current = d.current
+    this.max = d.max
+  }
+}
+
 export class UnavailableError extends MrDogeError {
   constructor(message: string, data?: unknown) {
     super("unavailable", message, data)
@@ -117,6 +129,7 @@ const CODE_MAP: Record<ErrorCode, new (message: string, data?: unknown) => MrDog
   not_found: NotFoundError,
   rate_limited: RateLimitError,
   subscription_limit_exceeded: SubscriptionLimitError,
+  connection_limit_exceeded: ConnectionLimitError,
   unavailable: UnavailableError,
   internal_error: InternalError,
   protocol_error: ProtocolError,
