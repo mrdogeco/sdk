@@ -1,6 +1,16 @@
-# Mr. Doge SDK
+<p align="center">
+  <img src="./logo.svg" alt="Mr. Doge SDK" width="240" />
+</p>
 
-Open-source SDKs and protocol for the [Mr. Doge](https://mrdoge.ai) realtime sports data API.
+<p align="center">
+  Realtime sports data over WebSocket. One connection, typed everything, no polling.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@mrdoge/sdk"><code>@mrdoge/sdk</code></a> •
+  <a href="https://docs.mrdoge.co">Docs</a> •
+  <a href="https://x.com/mrdogeapp">@mrdogeapp</a>
+</p>
 
 ## Packages
 
