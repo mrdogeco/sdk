@@ -1,0 +1,24 @@
+{
+  "name": "@mrdoge-examples/with-nextjs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mr. Doge SDK client example: Next.js App Router with token-minting API route + browser client using @mrdoge/client",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@mrdoge/client": "workspace:*",
+    "@mrdoge/sdk": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.5.0"
+  }
+}

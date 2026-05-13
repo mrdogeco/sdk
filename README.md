@@ -16,7 +16,8 @@
 
 | Package | What it is |
 |---|---|
-| [`@mrdoge/sdk`](./packages/node) | Official Node / TypeScript SDK |
+| [`@mrdoge/sdk`](./packages/node) | Node / TypeScript SDK — server-side. Holds your `sk_live_...` key, mints tokens, makes data calls. |
+| [`@mrdoge/client`](./packages/client) | Browser / React Native / edge SDK — client-side. No API key; authenticates via tokens minted by your backend. |
 | [`@mrdoge/protocol`](./packages/protocol) | Wire-format spec + Zod schemas + JSON Schema artifact. Read this to build an SDK in any language. |
 
 ## Get started

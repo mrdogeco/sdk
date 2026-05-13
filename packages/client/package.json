@@ -1,13 +1,13 @@
 {
-  "name": "@mrdoge/protocol",
+  "name": "@mrdoge/client",
   "version": "0.0.2",
-  "description": "Wire-format spec and shared Zod schemas for the Mr. Doge SDK protocol",
+  "description": "Mr. Doge client SDK for browsers, React Native, and edge runtimes. Authenticates via a customer-minted JWT — never embeds the API key.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/protocol",
+  "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/client",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mrdoge/sdk.git",
-    "directory": "packages/protocol"
+    "directory": "packages/client"
   },
   "bugs": {
     "url": "https://github.com/mrdoge/sdk/issues"
@@ -20,18 +20,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    },
-    "./schema.json": "./dist/schema.json"
+    }
   },
   "files": [
     "dist",
-    "PROTOCOL.md",
     "README.md"
   ],
   "scripts": {
-    "build": "tsup && tsx scripts/emit-json-schema.ts",
-    "build:lib": "tsup",
-    "build:schema": "tsx scripts/emit-json-schema.ts",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "echo 'TODO: vitest'",
     "lint": "echo 'TODO: eslint'",
@@ -43,17 +39,18 @@
     "mrdoge",
     "sports",
     "odds",
+    "betting",
+    "realtime",
     "websocket",
-    "json-rpc",
-    "schema"
+    "sdk",
+    "browser",
+    "react-native"
   ],
   "dependencies": {
-    "zod": "^3.23.0"
+    "@mrdoge/protocol": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.3.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.5.0",
-    "zod-to-json-schema": "^3.23.0"
+    "typescript": "^5.5.0"
   }
 }

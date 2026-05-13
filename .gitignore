@@ -12,3 +12,8 @@ coverage/
 .vscode/
 .idea/
 *.tsbuildinfo
+
+# Next.js (examples/with-nextjs)
+.next/
+out/
+next-env.d.ts

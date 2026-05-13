@@ -44,9 +44,14 @@ export const methods = {
   // -------------------------------------------------------------------------
 
   auth: {
-    params: z.object({
-      apiKey: z.string(),
-    }),
+    /**
+     * Exactly one of `apiKey` (server-side use with `sk_live_...`) or
+     * `token` (client-side use with a JWT minted via `tokens.create`).
+     */
+    params: z.union([
+      z.object({ apiKey: z.string() }),
+      z.object({ token: z.string() }),
+    ]),
     result: z.object({
       ok: z.literal(true),
     }),
@@ -58,6 +63,25 @@ export const methods = {
     }),
     result: z.object({
       ok: z.literal(true),
+    }),
+  },
+
+  /**
+   * Mint a short-lived auth token for client-side use. The customer's backend
+   * calls this with its `sk_live_...` key, then hands the token to the customer's
+   * frontend (browser/React Native) via @mrdoge/client. Frontends never see the
+   * sk_live_... key.
+   *
+   * TTL is customer-configurable: default 600s (10 min), server enforces bounds
+   * (min 60s, max 86400s = 24h).
+   */
+  "tokens.create": {
+    params: z.object({
+      ttl: z.number().int().min(60).max(86400).optional(),
+    }),
+    result: z.object({
+      token: z.string(),
+      expiresAt: z.string().datetime({ offset: true }),
     }),
   },
 

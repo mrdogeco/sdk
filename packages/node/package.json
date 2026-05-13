@@ -1,6 +1,6 @@
 {
   "name": "@mrdoge/sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Official Mr. Doge Node / TypeScript SDK — realtime sports data over WebSocket",
   "license": "Apache-2.0",
   "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/node",
