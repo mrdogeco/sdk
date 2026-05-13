@@ -275,6 +275,6 @@ Full param/result types in [PROTOCOL.md §6](../protocol/PROTOCOL.md#6-methods).
 
 ## Support
 
-- API issues, account, billing: support@mrdoge.ai
+- API issues, account, billing: support@mrdoge.co
 - SDK bugs and feature requests: file an issue
 - Wire-level protocol: [PROTOCOL.md](../protocol/PROTOCOL.md)

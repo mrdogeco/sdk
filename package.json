@@ -4,13 +4,13 @@
   "private": true,
   "description": "Mr. Doge open-source SDKs and protocol",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/mrdoge/sdk",
+  "homepage": "https://github.com/mrdogeco/sdk",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mrdoge/sdk.git"
+    "url": "git+https://github.com/mrdogeco/sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/mrdoge/sdk/issues"
+    "url": "https://github.com/mrdogeco/sdk/issues"
   },
   "scripts": {
     "build": "pnpm -r --filter=./packages/* build",

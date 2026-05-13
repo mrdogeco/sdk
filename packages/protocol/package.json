@@ -1,16 +1,16 @@
 {
   "name": "@mrdoge/protocol",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "Wire-format spec and shared Zod schemas for the Mr. Doge SDK protocol",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/protocol",
+  "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/protocol",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mrdoge/sdk.git",
+    "url": "git+https://github.com/mrdogeco/sdk.git",
     "directory": "packages/protocol"
   },
   "bugs": {
-    "url": "https://github.com/mrdoge/sdk/issues"
+    "url": "https://github.com/mrdogeco/sdk/issues"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -36,8 +36,8 @@
     "test": "echo 'TODO: vitest'",
     "lint": "echo 'TODO: eslint'",
     "prepublishOnly": "npm run build",
-    "release": "npm publish --access public",
-    "release:dry": "npm publish --access public --dry-run"
+    "release": "pnpm publish --access public --no-git-checks",
+    "release:dry": "pnpm publish --access public --dry-run --no-git-checks"
   },
   "keywords": [
     "mrdoge",

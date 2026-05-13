@@ -4,8 +4,8 @@ Thanks for considering a contribution.
 
 ## Reporting issues
 
-- Bugs in the Node SDK or protocol → [open an issue](https://github.com/mrdoge/sdk/issues).
-- API behavior, account, billing → support@mrdoge.ai (these aren't open-source concerns).
+- Bugs in the Node SDK or protocol → [open an issue](https://github.com/mrdogeco/sdk/issues).
+- API behavior, account, billing → support@mrdoge.co (these aren't open-source concerns).
 - Security vulnerabilities → see [SECURITY.md](./SECURITY.md), do **not** open a public issue.
 
 ## Building locally

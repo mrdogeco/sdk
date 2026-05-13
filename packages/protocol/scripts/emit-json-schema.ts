@@ -58,7 +58,7 @@ function toSchema(schema: z.ZodTypeAny) {
 
 const out = {
   $schema: "http://json-schema.org/draft-07/schema#",
-  $id: "https://schemas.mrdoge.ai/protocol/v1/schema.json",
+  $id: "https://schemas.mrdoge.co/protocol/v1/schema.json",
   title: "Mr. Doge SDK Protocol",
   description:
     "Wire-format spec for the Mr. Doge SDK. Generated from Zod schemas in @mrdoge/protocol. Do not edit by hand.",

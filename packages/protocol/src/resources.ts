@@ -55,6 +55,18 @@ export const Team = z.object({
 })
 export type Team = z.infer<typeof Team>
 
+/**
+ * Team with embedded sport reference. Returned by `teams.get` for use in
+ * team-screen headers and contexts where the consumer hasn't already loaded
+ * a match (which would expose `sport` via its embedded refs).
+ */
+export const TeamDetail = z.object({
+  id: TeamId,
+  name: z.string(),
+  sport: z.object({ id: SportId, name: z.string() }).nullable(),
+})
+export type TeamDetail = z.infer<typeof TeamDetail>
+
 // ---------------------------------------------------------------------------
 // Lean references embedded inside Match
 // ---------------------------------------------------------------------------
@@ -225,6 +237,59 @@ export const AiPick = z.object({
   createdAt: z.string().datetime({ offset: true }),
 })
 export type AiPick = z.infer<typeof AiPick>
+
+// ---------------------------------------------------------------------------
+// Team form (W/D/L aggregate over a team's recent completed matches)
+// ---------------------------------------------------------------------------
+
+export const TeamFormResult = z.enum(["win", "loss", "draw", "unknown"])
+export type TeamFormResult = z.infer<typeof TeamFormResult>
+
+export const TeamFormMatch = z.object({
+  matchId: MatchId,
+  startedAt: z.string().datetime({ offset: true }),
+  competition: z.object({
+    id: CompetitionId,
+    name: z.string().nullable(),
+    region: z.string().nullable(),
+  }),
+  homeTeam: TeamRef,
+  awayTeam: TeamRef,
+  opponent: TeamRef,
+  isHome: z.boolean(),
+  score: z.object({
+    /** Goals scored by the queried team. */
+    for: z.number().int().nullable(),
+    /** Goals conceded by the queried team. */
+    against: z.number().int().nullable(),
+    home: z.number().int().nullable(),
+    away: z.number().int().nullable(),
+  }),
+  result: TeamFormResult,
+})
+export type TeamFormMatch = z.infer<typeof TeamFormMatch>
+
+export const TeamForm = z.object({
+  team: TeamDetail,
+  summary: z.object({
+    wins: z.number().int().nonnegative(),
+    draws: z.number().int().nonnegative(),
+    losses: z.number().int().nonnegative(),
+    goalsFor: z.number().int().nonnegative(),
+    goalsAgainst: z.number().int().nonnegative(),
+    sampleSize: z.number().int().nonnegative(),
+    /** Recent W/D/L codes, most-recent first. */
+    form: z.array(z.string()),
+    /** Current streak label, e.g. "W3", "L2", or "". */
+    streak: z.string(),
+  }),
+  matches: z.array(TeamFormMatch),
+})
+export type TeamForm = z.infer<typeof TeamForm>
+
+// ---------------------------------------------------------------------------
+// AI
+// ---------------------------------------------------------------------------
 
 export const Recommendation = z.object({
   id: z.string(),

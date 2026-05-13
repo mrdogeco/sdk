@@ -7,7 +7,7 @@ import { Teams } from "./resources/teams"
 import { Matches } from "./resources/matches"
 import { Ai } from "./resources/ai"
 
-export const DEFAULT_BASE_URL = "wss://api.mrdoge.ai/sdk/v1"
+export const DEFAULT_BASE_URL = "wss://api.mrdoge.co/sdk/v1"
 
 export interface MrDogeOptions {
   /**

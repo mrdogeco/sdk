@@ -1,16 +1,16 @@
 {
   "name": "@mrdoge/sdk",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "Official Mr. Doge Node / TypeScript SDK — realtime sports data over WebSocket",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/mrdoge/sdk/tree/main/packages/node",
+  "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/node",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mrdoge/sdk.git",
+    "url": "git+https://github.com/mrdogeco/sdk.git",
     "directory": "packages/node"
   },
   "bugs": {
-    "url": "https://github.com/mrdoge/sdk/issues"
+    "url": "https://github.com/mrdogeco/sdk/issues"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -32,8 +32,8 @@
     "test": "echo 'TODO: vitest'",
     "lint": "echo 'TODO: eslint'",
     "prepublishOnly": "npm run build",
-    "release": "npm publish --access public",
-    "release:dry": "npm publish --access public --dry-run"
+    "release": "pnpm publish --access public --no-git-checks",
+    "release:dry": "pnpm publish --access public --dry-run --no-git-checks"
   },
   "keywords": [
     "mrdoge",

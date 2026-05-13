@@ -115,6 +115,27 @@ export const methods = {
     result: z.array(R.Team),
   },
 
+  "teams.get": {
+    params: z.object({
+      id: R.TeamId,
+      ...LocaleOnly,
+    }),
+    result: R.TeamDetail,
+  },
+
+  /**
+   * Aggregate W/D/L summary over a team's most recent completed matches.
+   * `sampleSize` defaults to 10 server-side; bounded 1–50.
+   */
+  "teams.form": {
+    params: z.object({
+      teamId: R.TeamId,
+      sampleSize: z.number().int().min(1).max(50).optional(),
+      ...LocaleOnly,
+    }),
+    result: R.TeamForm,
+  },
+
   // -------------------------------------------------------------------------
   // Matches
   // -------------------------------------------------------------------------
@@ -123,6 +144,8 @@ export const methods = {
     params: z.object({
       competitionId: R.CompetitionId.optional(),
       regionId: R.RegionId.optional(),
+      /** Filter by team — returns matches where the team is either home or away. */
+      teamId: R.TeamId.optional(),
       sportName: z.string().optional(),
       status: z.array(R.MatchStatus).optional(),
       ...DateRange,

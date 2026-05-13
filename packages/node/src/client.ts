@@ -7,7 +7,7 @@ import { Matches } from "./resources/matches"
 import { Ai } from "./resources/ai"
 import { Tokens } from "./resources/tokens"
 
-export const DEFAULT_BASE_URL = "wss://api.mrdoge.ai/sdk/v1"
+export const DEFAULT_BASE_URL = "wss://api.mrdoge.co/sdk/v1"
 
 export interface MrDogeOptions {
   apiKey: string
