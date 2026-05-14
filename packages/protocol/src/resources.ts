@@ -36,6 +36,22 @@ export const Region = z.object({
   id: RegionId,
   /** Localized region name (e.g. "England" / "Inglaterra"). Translation is server-side. */
   name: z.string(),
+  /**
+   * Number of events matching the request's filters (`date`, `sportName`,
+   * `status`). Present only when at least one filter is provided to
+   * `regions.list` — otherwise omitted. Use to size empty states / sort
+   * regions by activity without round-tripping `matches.list`.
+   */
+  eventCount: z.number().int().nonnegative().optional(),
+  /** Number of distinct competitions matching the request's filters. */
+  competitionCount: z.number().int().nonnegative().optional(),
+  /**
+   * IDs of competitions present in this region matching the request's
+   * filters. Useful for UI logic like "is any priority competition active
+   * in this region" without a separate `competitions.list` call. Present
+   * only when filters were applied.
+   */
+  competitionIds: z.array(CompetitionId).optional(),
 })
 export type Region = z.infer<typeof Region>
 
@@ -44,6 +60,12 @@ export const Competition = z.object({
   /** Localized competition name. */
   name: z.string(),
   regionId: RegionId,
+  /**
+   * Number of events matching the request's filters. Present only when
+   * `competitions.list` was called with `date` / `sportName` / `status` —
+   * otherwise omitted.
+   */
+  eventCount: z.number().int().nonnegative().optional(),
 })
 export type Competition = z.infer<typeof Competition>
 
@@ -99,39 +121,292 @@ export const MatchStatus = z.enum(["upcoming", "live", "completed"])
 export type MatchStatus = z.infer<typeof MatchStatus>
 
 /**
- * Live match statistics. Soccer fields are first-class; other sports use
- * `passthrough` to surface their own fields without forcing a schema change.
- *
- * Coarse-grained by design — every stats update carries the full latest state
- * (see PROTOCOL.md §7). Clients replace, never merge.
+ * Player-level stat entry, e.g. `{ name: "Lionel Messi", value: 2 }` for
+ * goals/assists/fouls per player. Surfaced as arrays on MatchStats.
  */
-export const MatchStats = z
-  .object({
-    minute: z.number().int().nullable().optional(),
-    phase: z.string().nullable().optional(),
-    phaseCaption: z.string().nullable().optional(),
+export const StatPlayer = z.object({
+  name: z.string(),
+  value: z.number(),
+})
+export type StatPlayer = z.infer<typeof StatPlayer>
 
-    homeGoals: z.number().int(),
-    awayGoals: z.number().int(),
+/**
+ * Coarse match state — drives top-level UI logic without needing to parse
+ * the sport-specific phase enum. Absorbs the legacy `isLive` / `isInPlay` /
+ * `isInPlayPaused` / `isInterrupted` booleans.
+ */
+export const MatchState = z.enum([
+  "scheduled",     // pre-match, no clock running
+  "live",          // active play
+  "paused",        // brief stoppage (VAR, ref whistle, timeout)
+  "intermission",  // halftime, between quarters/periods/sets/innings
+  "interrupted",   // suspended (weather, abandoned, etc.)
+  "finished",      // match concluded
+])
+export type MatchState = z.infer<typeof MatchState>
 
-    homeCorners: z.number().int().optional(),
-    awayCorners: z.number().int().optional(),
+/**
+ * One period in a match (a quarter, half, set, inning, etc.). Unified
+ * across sports — replaces upstream `quarterScores` / `periodScores` /
+ * `inningScores` / `setScores` / `phaseScores`.
+ *
+ * Soccer rarely has per-period scores in the upstream payload and may emit
+ * an empty `periods` array.
+ */
+export const Period = z.object({
+  /**
+   * Stable sport-defined code, e.g. `"Q1"`, `"OT"`, `"HT"`, `"INN_9"`.
+   * `null` for sports where upstream doesn't expose a stable code.
+   */
+  code: z.string().nullable(),
+  /** Localized display label, e.g. `"1º P"`, `"Inning 9"`. */
+  label: z.string(),
+  /** Score for the home team in this period. `null` if not yet played. */
+  homeScore: z.number().nullable(),
+  /** Score for the away team in this period. `null` if not yet played. */
+  awayScore: z.number().nullable(),
+  /** Whether this period is the one currently in progress. */
+  inPlay: z.boolean(),
+})
+export type Period = z.infer<typeof Period>
 
-    homeYellowCards: z.number().int().optional(),
-    awayYellowCards: z.number().int().optional(),
+/**
+ * Unified match clock + phase + state. Replaces the legacy bag of fields
+ * (`isLive`, `isInPlay`, `isInPlayPaused`, `isInterrupted`, `elapsed`,
+ * `elapsedSeconds`, `referenceTime`, `referenceTimeUnix`, `adjustTimeMillis`,
+ * `injuryMinutes`, `minute`, `phaseCaption`, `phaseCaptionLong`, `phase`).
+ *
+ * Handles both count-up clocks (soccer, baseball-style) and count-down
+ * clocks (basketball, ice hockey, american football, handball), as well as
+ * sports without a traditional clock (volleyball, baseball).
+ *
+ * Consumer DX, by ambition level:
+ *   - **Lazy**: render `display` directly. Server has already formatted
+ *     the right string ("44'", "Q3 7:42", "HT", "FT", "Top 9th", "Set 4")
+ *     and localized it where possible.
+ *   - **Custom labels**: switch on `state` and use the numeric fields
+ *     (`minute`/`stoppage` for soccer, `remainingSeconds` /
+ *     `elapsedSeconds` for count-down sports) to format your own.
+ *   - **Fluid second-by-second**: interpolate from `referenceTime` +
+ *     `elapsedSeconds` between server pushes. Customer drift formula:
+ *
+ *       liveSec = elapsedSeconds + (Date.now() - new Date(referenceTime)) / 1000
+ */
+export const Clock = z.object({
+  /**
+   * Stable machine-readable phase, e.g. `"SOCCER_MATCH_SECOND_HALF"`,
+   * `"BASKETBALL_GAME_OVERTIME"`. Useful for sport-specific UI logic.
+   * `null` when phase is unknown.
+   */
+  phase: z.string().nullable(),
 
-    homeRedCards: z.number().int().optional(),
-    awayRedCards: z.number().int().optional(),
+  /** Coarse display state — drives UI logic. */
+  state: MatchState,
 
-    homePossession: z.number().min(0).max(1).optional(),
-    awayPossession: z.number().min(0).max(1).optional(),
+  /**
+   * Pre-formatted localized **short** display string. Server picks the
+   * right format per sport/phase: `"44'"`, `"45+3'"`, `"Q3 7:42"`, `"HT"`,
+   * `"FT"`, `"9º Inning"`. Localized via the subscription `locale` param
+   * (en/pt/es supported; unknown locales fall back to en, then to the
+   * upstream source string). `null` when no clock label is meaningful.
+   */
+  display: z.string().nullable(),
 
-    homeShots: z.number().int().optional(),
-    awayShots: z.number().int().optional(),
-    homeShotsOnTarget: z.number().int().optional(),
-    awayShotsOnTarget: z.number().int().optional(),
-  })
-  .passthrough()
+  /**
+   * Pre-formatted localized **long** display string — the verbose form
+   * suited to a detail header. Examples: `"Half-time"`, `"Full Time"`,
+   * `"2nd Half"`, `"Overtime 0:01"`, `"3rd Quarter 7:42"`. Same
+   * localization rules as `display`. `null` when no long form exists
+   * (e.g. soccer running clock — the minute IS the display).
+   */
+  displayLong: z.string().nullable(),
+
+  // ---- Numeric clock values (for customers who format their own clocks) --
+
+  /**
+   * The value on the displayed clock, in seconds, captured at
+   * `referenceTime`. Sport-specific semantics:
+   *   - Soccer: total match-elapsed (e.g. 2700 = 45:00, 5400 = 90:00).
+   *   - Basketball / ice hockey / american football / handball: elapsed
+   *     within the current period (period clock counts up under the hood).
+   *   - Baseball / volleyball: `null` (no traditional clock).
+   *
+   * Pair with `referenceTime` to drift your own ticker:
+   *   liveSec = elapsedSeconds + (Date.now() - new Date(referenceTime)) / 1000
+   *
+   * `null` when no clock is active.
+   */
+  elapsedSeconds: z.number().nullable(),
+
+  /**
+   * Seconds remaining on the displayed clock for count-down sports
+   * (basketball, ice hockey, american football, handball). `null` for
+   * count-up sports and sports without a clock.
+   */
+  remainingSeconds: z.number().nullable(),
+
+  /**
+   * Total duration of the current period in seconds (e.g. 720 for an NBA
+   * quarter, 2700 for a soccer half). `null` when the period has no
+   * fixed duration.
+   */
+  periodDurationSeconds: z.number().nullable(),
+
+  // ---- Soccer-specific running minute + stoppage --------------------------
+
+  /**
+   * Running match minute capped at the phase max (45 in 1st half, 90 in
+   * 2nd half, 105 / 120 for extra time). Soccer only. `null` for sports
+   * without a continuous minute counter, or when not currently ticking
+   * (intermission, finished).
+   */
+  minute: z.number().int().nullable(),
+
+  /**
+   * Stoppage-time overflow in minutes, e.g. `3` for "45+3'". Soccer only.
+   * `null` outside stoppage time.
+   */
+  stoppage: z.number().int().nullable(),
+
+  // ---- Interpolation anchor ----------------------------------------------
+
+  /**
+   * ISO-8601 anchor time for client-side interpolation. Pair with
+   * `elapsedInPeriod` to drift your own ticker between server pushes.
+   * `null` when interpolation is not meaningful (intermission, finished,
+   * sports without a clock).
+   */
+  referenceTime: z.string().nullable(),
+})
+export type Clock = z.infer<typeof Clock>
+
+/**
+ * Live match statistics, unified across all supported sports
+ * (soccer, basketball, american football, baseball, ice hockey,
+ * volleyball, handball).
+ *
+ * Coarse-grained by design — every stats update carries the full latest
+ * state (see PROTOCOL.md §7). Clients replace, never merge.
+ *
+ * Default-strip mode (no `.passthrough()` / `.strict()`): unknown server
+ * fields are dropped on parse, so the public contract is the explicit
+ * field list below. Forward-compatible if the server adds a field the
+ * client doesn't know yet — the client just ignores it.
+ *
+ * Sport semantics for the primary `homeScore`/`awayScore`:
+ *   - Soccer / Ice Hockey: goals
+ *   - Basketball / American Football: points
+ *   - Baseball: runs
+ *   - Volleyball: sets won (per-set point totals live in `periods`)
+ *   - Handball: goals
+ *
+ * Customers infer the unit from `sport.name` on the parent `Match`.
+ */
+export const MatchStats = z.object({
+  // ---- UI hint -----------------------------------------------------------
+  /** If true, customers should hide stats UI for this match. */
+  hideStats: z.boolean().optional(),
+
+  // ---- Unified clock + state + phase ------------------------------------
+  /** Unified clock object — see Clock. `null` when no clock data. */
+  clock: Clock.nullable(),
+
+  // ---- Per-period breakdown ---------------------------------------------
+  /**
+   * Per-period scores (quarters, halves, sets, innings, etc.). Empty for
+   * sports that don't expose a per-period breakdown.
+   */
+  periods: z.array(Period).optional(),
+
+  // ---- Primary score (unified across all sports) -------------------------
+  /** Primary home score (goals / points / runs / sets — see header doc). */
+  homeScore: z.number().int(),
+  /** Primary away score (goals / points / runs / sets — see header doc). */
+  awayScore: z.number().int(),
+
+  // ---- Cards (mainly soccer) --------------------------------------------
+  homeYellowCards: z.number().int().optional(),
+  awayYellowCards: z.number().int().optional(),
+  homeRedCards: z.number().int().optional(),
+  awayRedCards: z.number().int().optional(),
+
+  // ---- Fouls (soccer, basketball) ---------------------------------------
+  homeFouls: z.number().int().optional(),
+  awayFouls: z.number().int().optional(),
+
+  // ---- Soccer-specific team stats ---------------------------------------
+  homeCorners: z.number().int().optional(),
+  awayCorners: z.number().int().optional(),
+  homeTackles: z.number().int().optional(),
+  awayTackles: z.number().int().optional(),
+  homeOffsides: z.number().int().optional(),
+  awayOffsides: z.number().int().optional(),
+  homeThrowIns: z.number().int().optional(),
+  awayThrowIns: z.number().int().optional(),
+  homeGoalKicks: z.number().int().optional(),
+  awayGoalKicks: z.number().int().optional(),
+  homePenaltyKicks: z.number().int().optional(),
+  awayPenaltyKicks: z.number().int().optional(),
+  /** Soccer ball-possession share, 0–1 (e.g. 0.62 = 62%). */
+  homePossession: z.number().min(0).max(1).optional(),
+  awayPossession: z.number().min(0).max(1).optional(),
+  homeShots: z.number().int().optional(),
+  awayShots: z.number().int().optional(),
+  homeShotsOnTarget: z.number().int().optional(),
+  awayShotsOnTarget: z.number().int().optional(),
+  homeExpectedGoals: z.number().optional(),
+  awayExpectedGoals: z.number().optional(),
+  homeWoodworkHits: z.number().int().optional(),
+  awayWoodworkHits: z.number().int().optional(),
+
+  // ---- Basketball-specific ----------------------------------------------
+  /** Whether the team has reached the foul threshold for free throws. */
+  homeIsBonus: z.boolean().optional(),
+  awayIsBonus: z.boolean().optional(),
+  /** Whether the team currently has the ball (basketball discrete possession). */
+  homeHasPossession: z.boolean().optional(),
+  awayHasPossession: z.boolean().optional(),
+
+  // ---- Baseball-specific ------------------------------------------------
+  outs: z.number().int().optional(),
+  balls: z.number().int().optional(),
+  strikes: z.number().int().optional(),
+  /**
+   * Base-runner state. Shape is upstream-defined; passthrough for now.
+   * Will be promoted to a typed schema once we settle the contract.
+   */
+  bases: z.array(z.unknown()).optional(),
+
+  // ---- Volleyball-specific ----------------------------------------------
+  /** Whether the team is currently serving. */
+  homeServes: z.boolean().optional(),
+  awayServes: z.boolean().optional(),
+
+  // ---- Player-level arrays (soccer) -------------------------------------
+  homePlayersGoals: z.array(StatPlayer).optional(),
+  awayPlayersGoals: z.array(StatPlayer).optional(),
+  homePlayersAssists: z.array(StatPlayer).optional(),
+  awayPlayersAssists: z.array(StatPlayer).optional(),
+  homePlayersFouls: z.array(StatPlayer).optional(),
+  awayPlayersFouls: z.array(StatPlayer).optional(),
+  homePlayersShots: z.array(StatPlayer).optional(),
+  awayPlayersShots: z.array(StatPlayer).optional(),
+  homePlayersShotsOnTarget: z.array(StatPlayer).optional(),
+  awayPlayersShotsOnTarget: z.array(StatPlayer).optional(),
+  homePlayersTackles: z.array(StatPlayer).optional(),
+  awayPlayersTackles: z.array(StatPlayer).optional(),
+  homePlayersOffsides: z.array(StatPlayer).optional(),
+  awayPlayersOffsides: z.array(StatPlayer).optional(),
+  homePlayersWoodworkHits: z.array(StatPlayer).optional(),
+  awayPlayersWoodworkHits: z.array(StatPlayer).optional(),
+
+  // ---- Live betting markets ---------------------------------------------
+  /**
+   * Live-betting market snapshots. Shape is upstream-defined for now; will
+   * be promoted to a typed schema once we settle the public contract.
+   */
+  liveBetItems: z.array(z.unknown()).optional(),
+})
 export type MatchStats = z.infer<typeof MatchStats>
 
 export const BetItem = z.object({
@@ -154,6 +429,51 @@ export const Market = z.object({
 })
 export type Market = z.infer<typeof Market>
 
+// ---------------------------------------------------------------------------
+// Field selectors — GraphQL-style response projection
+// ---------------------------------------------------------------------------
+
+/**
+ * Recursive selector type — letters the customer pick which fields of a
+ * response are returned. Mirrors the shape of the target type via TypeScript
+ * conditional types so autocomplete works.
+ *
+ *   - `field: true`       → include the full subtree
+ *   - `field: { …nested }` → include only the listed nested fields
+ *   - field omitted       → not returned
+ *
+ * Wire format: a nested JSON object with `true` leaves. The server walks
+ * both the response and the selector in lockstep and emits only what
+ * matched. When `select` is undefined the server returns the full default
+ * shape (no projection applied).
+ *
+ * Example:
+ *   select: {
+ *     id: true,
+ *     homeTeam: true,
+ *     competition: { name: true },
+ *     stats: { clock: { display: true }, homeScore: true, awayScore: true },
+ *     markets: true,
+ *   }
+ */
+export type Selector<T> = T extends ReadonlyArray<infer U>
+  ? Selector<U>
+  : T extends Date
+    ? true
+    : T extends object
+      ? { [K in keyof T]?: true | Selector<NonNullable<T[K]>> }
+      : true
+
+/**
+ * Permissive runtime schema for selectors. Doesn't enforce the target type's
+ * shape — that's the TypeScript compiler's job. The server validates fields
+ * against the actual response and silently drops keys that don't exist.
+ */
+type SelectorTreeValue = boolean | { [k: string]: SelectorTreeValue }
+export const SelectorTree: z.ZodType<SelectorTreeValue> = z.lazy(() =>
+  z.union([z.boolean(), z.record(z.string(), SelectorTree)]),
+)
+
 /**
  * Match shape returned by list/search/trending endpoints. Lean by design;
  * includes the two most relevant markets (match result + under/over). For
@@ -174,6 +494,9 @@ export const Match = z.object({
 })
 export type Match = z.infer<typeof Match>
 
+/** Convenience alias — typed selector for the `Match` shape. */
+export type MatchSelect = Selector<Match>
+
 /**
  * Full match detail returned by `matches.get` and as the initial snapshot of
  * `matches.subscribe`. Carries every market and current stats.
@@ -182,6 +505,9 @@ export const MatchDetail = Match.extend({
   views: z.number().int().nonnegative().optional(),
 })
 export type MatchDetail = z.infer<typeof MatchDetail>
+
+/** Convenience alias — typed selector for the `MatchDetail` shape. */
+export type MatchDetailSelect = Selector<MatchDetail>
 
 // ---------------------------------------------------------------------------
 // Pagination

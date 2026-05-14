@@ -1,6 +1,8 @@
 import type {
   MethodParams,
   MethodResult,
+  MatchSelect,
+  MatchDetailSelect,
   SubscriptionEventParams,
   SubscriptionClosedParams,
 } from "@mrdoge/protocol"
@@ -12,10 +14,37 @@ interface Defaults {
   timezone?: string
 }
 
+/**
+ * Typed param overrides — replace the protocol's permissive runtime
+ * `select` schema with the type-safe `MatchSelect` / `MatchDetailSelect`.
+ * Customers get full autocomplete for selectable field names.
+ */
+type MatchesListParams = Omit<MethodParams<"matches.list">, "select"> & {
+  select?: MatchSelect
+}
+type MatchesGetParams = Omit<MethodParams<"matches.get">, "select"> & {
+  select?: MatchDetailSelect
+}
+type MatchesTrendingParams = Omit<MethodParams<"matches.trending">, "select"> & {
+  select?: MatchSelect
+}
+type MatchesSearchParams = Omit<MethodParams<"matches.search">, "select"> & {
+  select?: MatchSelect
+}
+type MatchesSubscribeLiveParams = Omit<
+  MethodParams<"matches.subscribeLive">,
+  "select"
+> & {
+  select?: MatchSelect
+}
+type MatchesSubscribeParams = Omit<MethodParams<"matches.subscribe">, "select"> & {
+  select?: MatchDetailSelect
+}
+
 export class Matches {
   constructor(private readonly conn: Connection, private readonly defaults: Defaults) {}
 
-  list(params: MethodParams<"matches.list"> = {}): Promise<MethodResult<"matches.list">> {
+  list(params: MatchesListParams = {}): Promise<MethodResult<"matches.list">> {
     return this.conn.call("matches.list", {
       locale: this.defaults.locale,
       timezone: this.defaults.timezone,
@@ -23,12 +52,12 @@ export class Matches {
     })
   }
 
-  get(params: MethodParams<"matches.get">): Promise<MethodResult<"matches.get">> {
+  get(params: MatchesGetParams): Promise<MethodResult<"matches.get">> {
     return this.conn.call("matches.get", { locale: this.defaults.locale, ...params })
   }
 
   trending(
-    params: MethodParams<"matches.trending"> = {},
+    params: MatchesTrendingParams = {},
   ): Promise<MethodResult<"matches.trending">> {
     return this.conn.call("matches.trending", {
       locale: this.defaults.locale,
@@ -37,22 +66,22 @@ export class Matches {
     })
   }
 
-  search(params: MethodParams<"matches.search">): Promise<MethodResult<"matches.search">> {
+  search(params: MatchesSearchParams): Promise<MethodResult<"matches.search">> {
     return this.conn.call("matches.search", { locale: this.defaults.locale, ...params })
   }
 
   async subscribeLive(
-    params: MethodParams<"matches.subscribeLive"> = {},
+    params: MatchesSubscribeLiveParams = {},
   ): Promise<Subscription<"matches.subscribeLive">> {
     const merged = { locale: this.defaults.locale, ...params }
-    return this.registerSubscription("matches.subscribeLive", merged)
+    return this.registerSubscription("matches.subscribeLive", merged as MethodParams<"matches.subscribeLive">)
   }
 
   async subscribe(
-    params: MethodParams<"matches.subscribe">,
+    params: MatchesSubscribeParams,
   ): Promise<Subscription<"matches.subscribe">> {
     const merged = { locale: this.defaults.locale, ...params }
-    return this.registerSubscription("matches.subscribe", merged)
+    return this.registerSubscription("matches.subscribe", merged as MethodParams<"matches.subscribe">)
   }
 
   private async registerSubscription<M extends "matches.subscribe" | "matches.subscribeLive">(

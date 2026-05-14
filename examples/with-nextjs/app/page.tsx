@@ -1,7 +1,26 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { MrDoge, type Match, type MatchDetail } from "@mrdoge/client"
+import {
+  MrDoge,
+  type Match,
+  type MatchDetail,
+  type MatchSelect,
+} from "@mrdoge/client"
+
+// Project the list response server-side. The match-list view doesn't render
+// odds inline, so we drop `markets` and most of `stats` — only the clock
+// display + score travel over the wire. Detail screen fetches full Match
+// via matches.get when a row expands.
+const LIST_SELECT: MatchSelect = {
+  id: true,
+  startTime: true,
+  status: true,
+  homeTeam: true,
+  awayTeam: true,
+  competition: { name: true },
+  stats: { clock: { display: true }, homeScore: true, awayScore: true },
+}
 
 type ConnState = "idle" | "connecting" | "connected" | "error"
 
@@ -38,7 +57,11 @@ export default function Page() {
 
     async function load() {
       try {
-        const page = await mrdoge.matches.list({ date: today, limit: 20 })
+        const page = await mrdoge.matches.list({
+          date: today,
+          limit: 20,
+          select: LIST_SELECT,
+        })
         if (cancelled) return
         setMatches(page.data)
       } catch (err) {
@@ -122,6 +145,16 @@ export default function Page() {
                 <div className="teams">
                   {m.homeTeam.name} <span style={{ color: "#555" }}>vs</span>{" "}
                   {m.awayTeam.name}
+                  {m.stats && (
+                    <span style={{ marginLeft: 8, color: "#aaa" }}>
+                      {m.stats.homeScore}–{m.stats.awayScore}
+                      {m.stats.clock?.display && (
+                        <span style={{ marginLeft: 8, color: "#777" }}>
+                          {m.stats.clock.display}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <div className="meta">{m.competition.name}</div>
                 {expanded && (
@@ -132,8 +165,11 @@ export default function Page() {
                         <div>{detail.markets.length} markets available</div>
                         {detail.stats && (
                           <div>
-                            Score: {detail.stats.homeGoals} –{" "}
-                            {detail.stats.awayGoals}
+                            Score: {detail.stats.homeScore} –{" "}
+                            {detail.stats.awayScore}
+                            {detail.stats.clock?.display && (
+                              <> · {detail.stats.clock.display}</>
+                            )}
                           </div>
                         )}
                       </>
