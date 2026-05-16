@@ -10,7 +10,9 @@ import {
   type SubscriptionClosedParams,
   type RpcRequest,
 } from "@mrdoge/protocol"
+import type { HttpMethodName, MrDogeHttpClient } from "@mrdoge/http"
 import {
+  AbortError,
   ConnectionError,
   DisconnectedError,
   ProtocolError,
@@ -22,12 +24,29 @@ import {
 import { Emitter } from "./internal/emitter"
 import { DEFAULT_BACKOFF, type BackoffConfig, nextDelay, sleep } from "./internal/backoff"
 
+/**
+ * Per-call options accepted by every method that makes a request. Mirrors
+ * the `fetch` convention so callers can plug in a standard `AbortController`.
+ *
+ * When `signal` fires, the in-flight request is dropped client-side and the
+ * returned promise rejects with `AbortError` (`err.name === "AbortError"`).
+ */
+export interface CallOptions {
+  signal?: AbortSignal
+}
+
 // Terminal close codes — see PROTOCOL.md §10.
 const TERMINAL_CLOSE_CODES = new Set([4001, 4002, 4003, 4029])
 
 export interface ConnectionConfig {
   baseUrl: string
   apiKey: string
+  /**
+   * HTTP client used as the cold-start fast path. When `call()` fires
+   * before the WebSocket is open, it routes through this client so reads
+   * don't pay the WS handshake latency. Subscriptions still always use WS.
+   */
+  httpClient: MrDogeHttpClient
   /** Default locale applied to method params. Per-call overrides win. */
   locale?: string
   /** Default timezone applied to method params. Per-call overrides win. */
@@ -40,7 +59,10 @@ export interface ConnectionConfig {
   authTimeoutMs: number
 }
 
-export const DEFAULT_CONFIG: Omit<ConnectionConfig, "apiKey" | "baseUrl"> = {
+export const DEFAULT_CONFIG: Omit<
+  ConnectionConfig,
+  "apiKey" | "baseUrl" | "httpClient"
+> = {
   requestTimeoutMs: 10_000,
   maxReconnectAttempts: Infinity,
   reconnectBackoff: DEFAULT_BACKOFF,
@@ -120,9 +142,23 @@ export class Connection {
   async call<M extends MethodName>(
     method: M,
     params: MethodParams<M>,
+    options?: CallOptions,
   ): Promise<MethodResult<M>> {
-    await this.connect()
-    return this.send(method, params) as Promise<MethodResult<M>>
+    if (this.closed) {
+      return Promise.reject(new DisconnectedError("Client closed"))
+    }
+    // If WS isn't open, route reads through HTTP — saves the WS handshake
+    // (~1s+) on cold start. Only customer-facing reads reach `call()`;
+    // auth + subscription.cancel use `send()` directly. Subscriptions go
+    // through `registerSubscription` which always opens WS.
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      return this.config.httpClient.call(
+        method as HttpMethodName,
+        params as MethodParams<HttpMethodName>,
+        options,
+      ) as Promise<MethodResult<M>>
+    }
+    return this.send(method, params, options) as Promise<MethodResult<M>>
   }
 
   /**
@@ -138,9 +174,10 @@ export class Connection {
       onClosed: SubscriptionRegistration["onClosed"]
       onSnapshot: SubscriptionRegistration["onSnapshot"]
     },
+    options?: CallOptions,
   ): Promise<{ subId: string; snapshot: unknown }> {
     await this.connect()
-    const result = (await this.send(method, params)) as { sub: string; snapshot: unknown }
+    const result = (await this.send(method, params, options)) as { sub: string; snapshot: unknown }
     const registration: SubscriptionRegistration = {
       subId: result.sub,
       method,
@@ -270,7 +307,14 @@ export class Connection {
    */
   private pendingWelcome: PendingRequest | null = null
 
-  private send(method: string, params: unknown): Promise<unknown> {
+  private send(
+    method: string,
+    params: unknown,
+    options?: CallOptions,
+  ): Promise<unknown> {
+    if (options?.signal?.aborted) {
+      return Promise.reject(new AbortError())
+    }
     const ws = this.ws
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       return Promise.reject(new DisconnectedError("Socket not open"))
@@ -283,16 +327,36 @@ export class Connection {
       params,
     }
     return new Promise((resolve, reject) => {
+      const onAbort = () => {
+        this.pending.delete(id)
+        clearTimeout(timer)
+        options!.signal!.removeEventListener("abort", onAbort)
+        reject(new AbortError())
+      }
+      const detachSignal = () => {
+        options?.signal?.removeEventListener("abort", onAbort)
+      }
+      const wrappedResolve = (val: unknown) => {
+        detachSignal()
+        resolve(val)
+      }
+      const wrappedReject = (err: Error) => {
+        detachSignal()
+        reject(err)
+      }
       const timer = setTimeout(() => {
         this.pending.delete(id)
+        detachSignal()
         reject(new TimeoutError(`Request "${method}" timed out after ${this.config.requestTimeoutMs}ms`))
       }, this.config.requestTimeoutMs)
-      this.pending.set(id, { resolve, reject, timer })
+      this.pending.set(id, { resolve: wrappedResolve, reject: wrappedReject, timer })
+      options?.signal?.addEventListener("abort", onAbort)
       try {
         ws.send(JSON.stringify(frame))
       } catch (err) {
         this.pending.delete(id)
         clearTimeout(timer)
+        detachSignal()
         reject(new ConnectionError(`Failed to send frame: ${(err as Error).message}`))
       }
     })

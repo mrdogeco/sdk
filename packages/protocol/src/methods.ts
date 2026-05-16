@@ -224,6 +224,23 @@ export const methods = {
     result: z.array(R.Match),
   },
 
+  /**
+   * One-shot snapshot of live matches. Same data as the initial `snapshot`
+   * field of `matches.subscribeLive`, without registering a subscription —
+   * for HTTP/polling customers and for cold-start paths that want to render
+   * the initial state before opening a WebSocket for deltas.
+   */
+  "matches.getLive": {
+    params: z.object({
+      sportName: z.string().optional(),
+      regionId: R.RegionId.optional(),
+      competitionId: R.CompetitionId.optional(),
+      select: R.SelectorTree.optional(),
+      ...LocaleOnly,
+    }),
+    result: z.array(R.Match),
+  },
+
   "matches.subscribeLive": {
     params: z.object({
       /**

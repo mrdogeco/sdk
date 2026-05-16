@@ -40,7 +40,7 @@ export default function Page() {
     setConnState("connecting")
 
     // The client never sees the API key. It calls /api/mrdoge/token, our
-    // server-side route mints a JWT via @mrdoge/sdk, returns it here.
+    // server-side route mints a JWT via @mrdoge/node, returns it here.
     const mrdoge = new MrDoge({
       authEndpoint: "/api/mrdoge/token",
     })
@@ -109,7 +109,7 @@ export default function Page() {
       <p className="subtitle">
         Browser client using <code>@mrdoge/client</code>. Token minted by{" "}
         <code>/api/mrdoge/token</code> (server-side, uses{" "}
-        <code>@mrdoge/sdk</code>). API key never leaves the server.
+        <code>@mrdoge/node</code>). API key never leaves the server.
       </p>
 
       <div className={`status ${connState}`}>

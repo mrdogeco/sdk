@@ -1,3 +1,4 @@
+import { createHttpClient, type MrDogeHttpClient } from "@mrdoge/http"
 import { Connection, DEFAULT_CONFIG, type ConnectionConfig, type ConnectionEvents } from "./connection"
 import { type BackoffConfig } from "./internal/backoff"
 import { TokenManager, type AuthEndpointFetcher } from "./token-manager"
@@ -9,11 +10,23 @@ import { Ai } from "./resources/ai"
 
 export const DEFAULT_BASE_URL = "wss://api.mrdoge.co/sdk/v1"
 
+/**
+ * Derive the HTTP gateway URL from the configured WS URL by swapping the
+ * scheme. Both transports sit at the same `/sdk/v1` path, so one config
+ * value drives both. Falls back to leaving the URL alone for non-WS schemes
+ * (lets callers pass a plain HTTPS URL if they want to).
+ */
+function wsToHttp(url: string): string {
+  if (url.startsWith("wss://")) return "https://" + url.slice("wss://".length)
+  if (url.startsWith("ws://")) return "http://" + url.slice("ws://".length)
+  return url
+}
+
 export interface MrDogeOptions {
   /**
    * Either `authEndpoint` (URL we POST to for tokens) or `fetchToken`
    * (custom async function) is required — they're mutually exclusive.
-   * Customer's backend uses `@mrdoge/sdk` and `mrdoge.tokens.create()` to
+   * Customer's backend uses `@mrdoge/node` and `mrdoge.tokens.create()` to
    * mint tokens, then exposes them via this endpoint.
    */
   authEndpoint?: string
@@ -51,7 +64,7 @@ export interface MrDogeOptions {
  *
  * Authenticates via short-lived JWTs minted by your own backend — the SDK
  * never embeds an API key. Configure with an `authEndpoint` URL pointing at
- * your token-mint route (which uses `@mrdoge/sdk` under the hood).
+ * your token-mint route (which uses `@mrdoge/node` under the hood).
  *
  * ```ts
  * import { MrDoge } from "@mrdoge/client"
@@ -68,6 +81,7 @@ export class MrDoge {
   readonly ai: Ai
 
   private readonly connection: Connection
+  private readonly http: MrDogeHttpClient
 
   constructor(options: MrDogeOptions) {
     if (!options?.authEndpoint && !options?.fetchToken) {
@@ -84,12 +98,28 @@ export class MrDoge {
       refreshLeewaySec: options.refreshLeewaySec,
     })
 
-    const config: ConnectionConfig = {
-      baseUrl: options.baseUrl ?? DEFAULT_BASE_URL,
-      tokenManager,
+    const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL
+    const requestTimeoutMs =
+      options.requestTimeoutMs ?? DEFAULT_CONFIG.requestTimeoutMs
+
+    // HTTP client shares the same TokenManager — cold-start reads
+    // (regions.list, matches.trending, matches.getLive) don't pay a separate
+    // token-mint, they reuse whatever WS has cached.
+    this.http = createHttpClient({
+      fetchToken: () => tokenManager.getValidToken(),
+      baseUrl: wsToHttp(baseUrl),
       locale: options.locale,
       timezone: options.timezone,
-      requestTimeoutMs: options.requestTimeoutMs ?? DEFAULT_CONFIG.requestTimeoutMs,
+      requestTimeoutMs,
+    })
+
+    const config: ConnectionConfig = {
+      baseUrl,
+      tokenManager,
+      httpClient: this.http,
+      locale: options.locale,
+      timezone: options.timezone,
+      requestTimeoutMs,
       authTimeoutMs: DEFAULT_CONFIG.authTimeoutMs,
       maxReconnectAttempts:
         options.maxReconnectAttempts ?? DEFAULT_CONFIG.maxReconnectAttempts,
@@ -105,7 +135,7 @@ export class MrDoge {
     this.regions = new Regions(this.connection, defaults)
     this.competitions = new Competitions(this.connection, defaults)
     this.teams = new Teams(this.connection, defaults)
-    this.matches = new Matches(this.connection, defaults)
+    this.matches = new Matches(this.connection, defaults, this.http)
     this.ai = new Ai(this.connection, defaults)
   }
 

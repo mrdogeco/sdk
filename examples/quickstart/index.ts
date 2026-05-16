@@ -20,7 +20,7 @@ import {
   RateLimitError,
   UnauthorizedError,
   type MatchSelect,
-} from "@mrdoge/sdk"
+} from "@mrdoge/node"
 
 const apiKey = process.env.MRDOGE_API_KEY
 if (!apiKey) {

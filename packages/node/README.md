@@ -3,13 +3,13 @@
 Realtime sports data. One connection, typed everything, no polling.
 
 ```bash
-npm install @mrdoge/sdk
+npm install @mrdoge/node
 ```
 
 ## Quick start
 
 ```ts
-import { MrDoge } from "@mrdoge/sdk"
+import { MrDoge } from "@mrdoge/node"
 
 const mrdoge = new MrDoge({ apiKey: process.env.MRDOGE_API_KEY })
 
@@ -185,7 +185,7 @@ import {
   ValidationError,
   ForbiddenError,
   ConnectionError,
-} from "@mrdoge/sdk"
+} from "@mrdoge/node"
 
 try {
   const match = await mrdoge.matches.get({ id: "12345" })

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@mrdoge/sdk"><code>@mrdoge/sdk</code></a> •
+  <a href="https://www.npmjs.com/package/@mrdoge/node"><code>@mrdoge/node</code></a> •
   <a href="https://docs.mrdoge.co">Docs</a> •
   <a href="https://x.com/mrdogeapp">@mrdogeapp</a>
 </p>
@@ -16,18 +16,18 @@
 
 | Package | What it is |
 |---|---|
-| [`@mrdoge/sdk`](./packages/node) | Node / TypeScript SDK — server-side. Holds your `sk_live_...` key, mints tokens, makes data calls. |
+| [`@mrdoge/node`](./packages/node) | Node / TypeScript SDK — server-side. Holds your `sk_live_...` key, mints tokens, makes data calls. |
 | [`@mrdoge/client`](./packages/client) | Browser / React Native / edge SDK — client-side. No API key; authenticates via tokens minted by your backend. |
 | [`@mrdoge/protocol`](./packages/protocol) | Wire-format spec + Zod schemas + JSON Schema artifact. Read this to build an SDK in any language. |
 
 ## Get started
 
 ```bash
-npm install @mrdoge/sdk
+npm install @mrdoge/node
 ```
 
 ```ts
-import { MrDoge } from "@mrdoge/sdk"
+import { MrDoge } from "@mrdoge/node"
 
 const mrdoge = new MrDoge({ apiKey: process.env.MRDOGE_API_KEY })
 const matches = await mrdoge.matches.list({ date: "2026-05-12" })

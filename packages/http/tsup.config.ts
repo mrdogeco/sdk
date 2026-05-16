@@ -7,6 +7,6 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   target: "es2020",
-  external: ["@mrdoge/protocol", "@mrdoge/http"],
+  external: ["@mrdoge/protocol"],
   platform: "neutral",
 })

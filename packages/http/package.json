@@ -1,13 +1,13 @@
 {
-  "name": "@mrdoge/client",
+  "name": "@mrdoge/http",
   "version": "0.1.1",
-  "description": "Mr. Doge client SDK for browsers, React Native, and edge runtimes. Authenticates via a customer-minted JWT — never embeds the API key.",
+  "description": "Mr. Doge HTTP-only SDK. Zero runtime deps beyond @mrdoge/protocol. Works anywhere fetch exists: Node, browsers, React Native, Cloudflare Workers, Vercel Edge, Lambda.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/client",
+  "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/http",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mrdogeco/sdk.git",
-    "directory": "packages/client"
+    "directory": "packages/http"
   },
   "bugs": {
     "url": "https://github.com/mrdogeco/sdk/issues"
@@ -40,14 +40,12 @@
     "sports",
     "odds",
     "betting",
-    "realtime",
-    "websocket",
+    "http",
+    "rpc",
     "sdk",
-    "browser",
-    "react-native"
+    "edge"
   ],
   "dependencies": {
-    "@mrdoge/http": "workspace:*",
     "@mrdoge/protocol": "workspace:*"
   },
   "devDependencies": {

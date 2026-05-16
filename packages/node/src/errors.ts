@@ -4,7 +4,7 @@ import type { ErrorCode, RpcError } from "@mrdoge/protocol"
  * Base class for every SDK-thrown error. Map by `instanceof` or by `code`.
  */
 export class MrDogeError extends Error {
-  readonly code: ErrorCode | "connection_error" | "disconnected" | "timeout" | "unknown"
+  readonly code: ErrorCode | "connection_error" | "disconnected" | "timeout" | "aborted" | "unknown"
   readonly data?: unknown
 
   constructor(
@@ -117,6 +117,16 @@ export class DisconnectedError extends MrDogeError {
 export class TimeoutError extends MrDogeError {
   constructor(message: string, data?: unknown) {
     super("timeout", message, data)
+  }
+}
+
+/**
+ * Thrown when a request is aborted via the customer-supplied
+ * `options.signal`. Matches `fetch` convention — `err.name === "AbortError"`.
+ */
+export class AbortError extends MrDogeError {
+  constructor(message = "Request aborted") {
+    super("aborted", message)
   }
 }
 

@@ -1,5 +1,5 @@
 import type { MethodParams, MethodResult } from "@mrdoge/protocol"
-import type { Connection } from "../connection"
+import type { CallOptions, Connection } from "../connection"
 
 /**
  * Server-side resource for minting short-lived auth tokens for client-side use.
@@ -30,7 +30,8 @@ export class Tokens {
    */
   create(
     params: MethodParams<"tokens.create"> = {},
+    options?: CallOptions,
   ): Promise<MethodResult<"tokens.create">> {
-    return this.conn.call("tokens.create", params)
+    return this.conn.call("tokens.create", params, options)
   }
 }

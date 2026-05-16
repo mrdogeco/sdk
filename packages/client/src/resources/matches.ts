@@ -6,8 +6,9 @@ import type {
   SubscriptionEventParams,
   SubscriptionClosedParams,
 } from "@mrdoge/protocol"
-import type { Connection } from "../connection"
-import { Subscription } from "../subscription"
+import type { MrDogeHttpClient } from "@mrdoge/http"
+import type { CallOptions, Connection } from "../connection"
+import { Subscription, PENDING_SUB_ID } from "../subscription"
 
 interface Defaults {
   locale?: string
@@ -42,59 +43,184 @@ type MatchesSubscribeParams = Omit<MethodParams<"matches.subscribe">, "select"> 
 }
 
 export class Matches {
-  constructor(private readonly conn: Connection, private readonly defaults: Defaults) {}
+  constructor(
+    private readonly conn: Connection,
+    private readonly defaults: Defaults,
+    private readonly http: MrDogeHttpClient,
+  ) {}
 
-  list(params: MatchesListParams = {}): Promise<MethodResult<"matches.list">> {
-    return this.conn.call("matches.list", {
-      locale: this.defaults.locale,
-      timezone: this.defaults.timezone,
-      ...params,
-    })
+  list(
+    params: MatchesListParams = {},
+    options?: CallOptions,
+  ): Promise<MethodResult<"matches.list">> {
+    return this.conn.call(
+      "matches.list",
+      {
+        locale: this.defaults.locale,
+        timezone: this.defaults.timezone,
+        ...params,
+      },
+      options,
+    )
   }
 
-  get(params: MatchesGetParams): Promise<MethodResult<"matches.get">> {
-    return this.conn.call("matches.get", { locale: this.defaults.locale, ...params })
+  get(
+    params: MatchesGetParams,
+    options?: CallOptions,
+  ): Promise<MethodResult<"matches.get">> {
+    return this.conn.call(
+      "matches.get",
+      { locale: this.defaults.locale, ...params },
+      options,
+    )
   }
 
   trending(
     params: MatchesTrendingParams = {},
+    options?: CallOptions,
   ): Promise<MethodResult<"matches.trending">> {
-    return this.conn.call("matches.trending", {
-      locale: this.defaults.locale,
-      timezone: this.defaults.timezone,
-      ...params,
-    })
+    return this.conn.call(
+      "matches.trending",
+      {
+        locale: this.defaults.locale,
+        timezone: this.defaults.timezone,
+        ...params,
+      },
+      options,
+    )
   }
 
-  search(params: MatchesSearchParams): Promise<MethodResult<"matches.search">> {
-    return this.conn.call("matches.search", { locale: this.defaults.locale, ...params })
+  search(
+    params: MatchesSearchParams,
+    options?: CallOptions,
+  ): Promise<MethodResult<"matches.search">> {
+    return this.conn.call(
+      "matches.search",
+      { locale: this.defaults.locale, ...params },
+      options,
+    )
   }
 
   async subscribeLive(
     params: MatchesSubscribeLiveParams = {},
+    options?: CallOptions,
   ): Promise<Subscription<"matches.subscribeLive">> {
     const merged = { locale: this.defaults.locale, ...params }
-    return this.registerSubscription("matches.subscribeLive", merged as MethodParams<"matches.subscribeLive">)
+
+    // Race HTTP `matches.getLive` against the WS subscribe. HTTP returns from
+    // the server-side Redis cache in ~50-150ms; the WS path pays the TCP +
+    // TLS + auth handshake on cold start (~1.5s). Whichever lands first
+    // populates `.snapshot`. The WS path always continues — it's the source
+    // of `match.upd` / `match.del` deltas after the initial snapshot.
+    //
+    // `options.signal` aborts BOTH the in-flight HTTP getLive and the WS
+    // subscribe. Once the subscription is established, customer uses
+    // `sub.cancel()` for teardown.
+    let handle: Subscription<"matches.subscribeLive">
+
+    const wsPromise = this.conn.registerSubscription(
+      "matches.subscribeLive",
+      merged as MethodParams<"matches.subscribeLive">,
+      {
+        onEvent: (event: SubscriptionEventParams) => handle?._deliverEvent(event),
+        onClosed: (p: SubscriptionClosedParams) => handle?._deliverClosed(p.reason, p.message),
+        onSnapshot: (newSubId: string, newSnap: unknown) =>
+          handle?._deliverSnapshot(newSubId, newSnap as never),
+      },
+      options,
+    )
+
+    const httpPromise = this.http
+      .call(
+        "matches.getLive",
+        merged as MethodParams<"matches.getLive">,
+        options,
+      )
+      .then((snapshot) => ({ kind: "http" as const, snapshot }))
+
+    type Winner =
+      | { kind: "http"; snapshot: MethodResult<"matches.getLive"> }
+      | { kind: "ws"; subId: string; snapshot: MethodResult<"matches.subscribeLive">["snapshot"] }
+
+    const wsRace = wsPromise.then(
+      (r) => ({ kind: "ws" as const, subId: r.subId, snapshot: r.snapshot as MethodResult<"matches.subscribeLive">["snapshot"] }),
+    )
+
+    let winner: Winner
+    try {
+      winner = await Promise.race<Winner>([httpPromise, wsRace])
+    } catch {
+      // HTTP rejected before WS resolved. Fall back to WS alone — wait it out.
+      const ws = await wsPromise
+      handle = new Subscription<"matches.subscribeLive">(
+        this.conn,
+        ws.subId,
+        ws.snapshot as never,
+      )
+      return handle
+    }
+
+    if (winner.kind === "ws") {
+      handle = new Subscription<"matches.subscribeLive">(
+        this.conn,
+        winner.subId,
+        winner.snapshot as never,
+      )
+      return handle
+    }
+
+    // HTTP won — build the Subscription with the HTTP snapshot and a pending
+    // subId. The WS subscribe is still in flight; when it resolves, the
+    // onSnapshot handler (or our tail handler) delivers the real subId +
+    // canonical snapshot. If WS fails outright, deliver `closed` so the
+    // customer can react.
+    handle = new Subscription<"matches.subscribeLive">(
+      this.conn,
+      PENDING_SUB_ID,
+      winner.snapshot as never,
+    )
+    wsPromise
+      .then((r) => {
+        handle._deliverSnapshot(r.subId, r.snapshot as never)
+      })
+      .catch((err) => {
+        handle._deliverClosed(
+          "internal_error",
+          err instanceof Error ? err.message : String(err),
+        )
+      })
+    return handle
   }
 
   async subscribe(
     params: MatchesSubscribeParams,
+    options?: CallOptions,
   ): Promise<Subscription<"matches.subscribe">> {
     const merged = { locale: this.defaults.locale, ...params }
-    return this.registerSubscription("matches.subscribe", merged as MethodParams<"matches.subscribe">)
+    return this.registerSubscription(
+      "matches.subscribe",
+      merged as MethodParams<"matches.subscribe">,
+      options,
+    )
   }
 
   private async registerSubscription<M extends "matches.subscribe" | "matches.subscribeLive">(
     method: M,
     params: MethodParams<M>,
+    options?: CallOptions,
   ): Promise<Subscription<M>> {
     let handle: Subscription<M>
-    const { subId, snapshot } = await this.conn.registerSubscription(method, params, {
-      onEvent: (event: SubscriptionEventParams) => handle?._deliverEvent(event),
-      onClosed: (p: SubscriptionClosedParams) => handle?._deliverClosed(p.reason, p.message),
-      onSnapshot: (newSubId: string, newSnap: unknown) =>
-        handle?._deliverSnapshot(newSubId, newSnap as never),
-    })
+    const { subId, snapshot } = await this.conn.registerSubscription(
+      method,
+      params,
+      {
+        onEvent: (event: SubscriptionEventParams) => handle?._deliverEvent(event),
+        onClosed: (p: SubscriptionClosedParams) => handle?._deliverClosed(p.reason, p.message),
+        onSnapshot: (newSubId: string, newSnap: unknown) =>
+          handle?._deliverSnapshot(newSubId, newSnap as never),
+      },
+      options,
+    )
     handle = new Subscription<M>(this.conn, subId, snapshot as never)
     return handle
   }

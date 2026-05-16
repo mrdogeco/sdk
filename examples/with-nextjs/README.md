@@ -2,7 +2,7 @@
 
 A runnable end-to-end example showing both halves of the Mr. Doge SDK working together:
 
-- **Backend (`@mrdoge/sdk`)** — Next.js API route at `app/api/mrdoge/token/route.ts` holds the `sk_live_...` API key and mints short-lived tokens
+- **Backend (`@mrdoge/node`)** — Next.js API route at `app/api/mrdoge/token/route.ts` holds the `sk_live_...` API key and mints short-lived tokens
 - **Frontend (`@mrdoge/client`)** — Next.js client page at `app/page.tsx` calls the token route, then opens a WebSocket to the SDK gateway and fetches today's matches
 
 The API key never leaves the server. The browser receives only short-lived JWTs (10-minute TTL by default).

@@ -1,8 +1,8 @@
 /**
- * @mrdoge/sdk — official Node / TypeScript SDK for Mr. Doge realtime sports data.
+ * @mrdoge/node — official Node / TypeScript SDK for Mr. Doge realtime sports data.
  *
  * ```ts
- * import { MrDoge } from "@mrdoge/sdk"
+ * import { MrDoge } from "@mrdoge/node"
  * const mrdoge = new MrDoge({ apiKey: process.env.MRDOGE_API_KEY! })
  * const matches = await mrdoge.matches.list({ date: "2026-05-12" })
  * ```
@@ -10,6 +10,7 @@
 
 export { MrDoge, type MrDogeOptions, DEFAULT_BASE_URL } from "./client"
 export { Subscription } from "./subscription"
+export type { CallOptions } from "./connection"
 export {
   MrDogeError,
   UnauthorizedError,
@@ -25,6 +26,7 @@ export {
   ConnectionError,
   DisconnectedError,
   TimeoutError,
+  AbortError,
 } from "./errors"
 
 // Re-export the most useful protocol types so consumers don't have to import

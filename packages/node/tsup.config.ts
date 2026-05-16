@@ -7,5 +7,5 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   target: "es2022",
-  external: ["@mrdoge/protocol", "ws"],
+  external: ["@mrdoge/protocol", "@mrdoge/http", "ws"],
 })

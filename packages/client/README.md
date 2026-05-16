@@ -10,7 +10,7 @@ npm install @mrdoge/client
 
 | Where you run code | Use | Why |
 |---|---|---|
-| Server (Node, Bun, Deno, etc.) | [`@mrdoge/sdk`](../node) | Holds the long-lived `sk_live_...` API key. Mints tokens. Makes data calls directly. |
+| Server (Node, Bun, Deno, etc.) | [`@mrdoge/node`](../node) | Holds the long-lived `sk_live_...` API key. Mints tokens. Makes data calls directly. |
 | Client (Browser, React Native, Cloudflare Workers, etc.) | `@mrdoge/client` | Holds no key. Calls your backend for short-lived tokens. Makes data calls with those. |
 
 ## Setup
@@ -19,7 +19,7 @@ npm install @mrdoge/client
 
 ```ts
 // Your backend (Next.js API route, Express, NestJS, anything)
-import { MrDoge } from "@mrdoge/sdk"
+import { MrDoge } from "@mrdoge/node"
 
 const mrdoge = new MrDoge({ apiKey: process.env.MRDOGE_API_KEY! })
 
@@ -45,11 +45,11 @@ const mrdoge = new MrDoge({
 const matches = await mrdoge.matches.list({ date: "2026-05-13" })
 ```
 
-That's the whole integration. Same method names, params, and return types as `@mrdoge/sdk` — the only difference is the constructor.
+That's the whole integration. Same method names, params, and return types as `@mrdoge/node` — the only difference is the constructor.
 
 ## Method surface
 
-Identical to `@mrdoge/sdk` (minus `tokens.create`, which is server-only):
+Identical to `@mrdoge/node` (minus `tokens.create`, which is server-only):
 
 | Resource | Methods |
 |---|---|

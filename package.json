@@ -21,13 +21,15 @@
     "version:minor": "pnpm -r --filter=./packages/* exec npm version minor --no-git-tag-version",
     "version:major": "pnpm -r --filter=./packages/* exec npm version major --no-git-tag-version",
     "release:protocol": "pnpm build && pnpm --filter @mrdoge/protocol release",
-    "release:node": "pnpm build && pnpm --filter @mrdoge/sdk release",
+    "release:http": "pnpm build && pnpm --filter @mrdoge/http release",
+    "release:node": "pnpm build && pnpm --filter @mrdoge/node release",
     "release:client": "pnpm build && pnpm --filter @mrdoge/client release",
-    "release:all": "pnpm release:protocol && pnpm --filter @mrdoge/sdk release && pnpm --filter @mrdoge/client release",
+    "release:all": "pnpm release:protocol && pnpm --filter @mrdoge/http release && pnpm --filter @mrdoge/node release && pnpm --filter @mrdoge/client release",
     "release:protocol:dry": "pnpm build && pnpm --filter @mrdoge/protocol release:dry",
-    "release:node:dry": "pnpm build && pnpm --filter @mrdoge/sdk release:dry",
+    "release:http:dry": "pnpm build && pnpm --filter @mrdoge/http release:dry",
+    "release:node:dry": "pnpm build && pnpm --filter @mrdoge/node release:dry",
     "release:client:dry": "pnpm build && pnpm --filter @mrdoge/client release:dry",
-    "release:all:dry": "pnpm release:protocol:dry && pnpm --filter @mrdoge/sdk release:dry && pnpm --filter @mrdoge/client release:dry"
+    "release:all:dry": "pnpm release:protocol:dry && pnpm --filter @mrdoge/http release:dry && pnpm --filter @mrdoge/node release:dry && pnpm --filter @mrdoge/client release:dry"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

@@ -1,3 +1,4 @@
+import { createHttpClient, type MrDogeHttpClient } from "@mrdoge/http"
 import { Connection, DEFAULT_CONFIG, type ConnectionConfig, type ConnectionEvents } from "./connection"
 import { type BackoffConfig } from "./internal/backoff"
 import { Regions } from "./resources/regions"
@@ -8,6 +9,16 @@ import { Ai } from "./resources/ai"
 import { Tokens } from "./resources/tokens"
 
 export const DEFAULT_BASE_URL = "wss://api.mrdoge.co/sdk/v1"
+
+/**
+ * Derive the HTTP gateway URL from the configured WS URL by swapping the
+ * scheme. One `baseUrl` config drives both transports.
+ */
+function wsToHttp(url: string): string {
+  if (url.startsWith("wss://")) return "https://" + url.slice("wss://".length)
+  if (url.startsWith("ws://")) return "http://" + url.slice("ws://".length)
+  return url
+}
 
 export interface MrDogeOptions {
   apiKey: string
@@ -57,17 +68,31 @@ export class MrDoge {
   readonly tokens: Tokens
 
   private readonly connection: Connection
+  private readonly http: MrDogeHttpClient
 
   constructor(options: MrDogeOptions) {
     if (!options?.apiKey) throw new Error("MrDoge: `apiKey` is required")
 
-    const config: ConnectionConfig = {
-      ...DEFAULT_CONFIG,
-      baseUrl: options.baseUrl ?? DEFAULT_BASE_URL,
+    const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL
+    const requestTimeoutMs =
+      options.requestTimeoutMs ?? DEFAULT_CONFIG.requestTimeoutMs
+
+    this.http = createHttpClient({
       apiKey: options.apiKey,
+      baseUrl: wsToHttp(baseUrl),
       locale: options.locale,
       timezone: options.timezone,
-      requestTimeoutMs: options.requestTimeoutMs ?? DEFAULT_CONFIG.requestTimeoutMs,
+      requestTimeoutMs,
+    })
+
+    const config: ConnectionConfig = {
+      ...DEFAULT_CONFIG,
+      baseUrl,
+      apiKey: options.apiKey,
+      httpClient: this.http,
+      locale: options.locale,
+      timezone: options.timezone,
+      requestTimeoutMs,
       maxReconnectAttempts:
         options.maxReconnectAttempts ?? DEFAULT_CONFIG.maxReconnectAttempts,
       reconnectBackoff: {
@@ -83,7 +108,7 @@ export class MrDoge {
     this.regions = new Regions(this.connection, defaults)
     this.competitions = new Competitions(this.connection, defaults)
     this.teams = new Teams(this.connection, defaults)
-    this.matches = new Matches(this.connection, defaults)
+    this.matches = new Matches(this.connection, defaults, this.http)
     this.ai = new Ai(this.connection, defaults)
     this.tokens = new Tokens(this.connection)
   }

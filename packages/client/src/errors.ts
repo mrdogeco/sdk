@@ -7,6 +7,7 @@ export class MrDogeError extends Error {
     | "connection_error"
     | "disconnected"
     | "timeout"
+    | "aborted"
     | "auth_endpoint_failed"
     | "unknown"
   readonly data?: unknown
@@ -119,6 +120,16 @@ export class DisconnectedError extends MrDogeError {
 export class TimeoutError extends MrDogeError {
   constructor(message: string, data?: unknown) {
     super("timeout", message, data)
+  }
+}
+
+/**
+ * Thrown when a request is aborted via the customer-supplied
+ * `options.signal`. Matches `fetch` convention — `err.name === "AbortError"`.
+ */
+export class AbortError extends MrDogeError {
+  constructor(message = "Request aborted") {
+    super("aborted", message)
   }
 }
 

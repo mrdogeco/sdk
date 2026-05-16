@@ -1,4 +1,4 @@
-import { MrDoge } from "@mrdoge/sdk"
+import { MrDoge } from "@mrdoge/node"
 import { NextResponse } from "next/server"
 
 const apiKey = process.env.MRDOGE_API_KEY

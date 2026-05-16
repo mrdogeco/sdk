@@ -2,7 +2,7 @@
  * @mrdoge/client — Mr. Doge SDK for browsers, React Native, and edge runtimes.
  *
  * Authenticates via short-lived JWTs minted by your own backend; the API key
- * never leaves your server. Same method surface as @mrdoge/sdk (Node) — the
+ * never leaves your server. Same method surface as @mrdoge/node (Node) — the
  * only difference is the constructor.
  *
  * ```ts
@@ -15,6 +15,7 @@
 
 export { MrDoge, type MrDogeOptions, DEFAULT_BASE_URL } from "./client"
 export { Subscription } from "./subscription"
+export type { CallOptions } from "./connection"
 export type { AuthEndpointResponse, AuthEndpointFetcher } from "./token-manager"
 export {
   MrDogeError,
@@ -31,6 +32,7 @@ export {
   ConnectionError,
   DisconnectedError,
   TimeoutError,
+  AbortError,
   AuthEndpointError,
 } from "./errors"
 
