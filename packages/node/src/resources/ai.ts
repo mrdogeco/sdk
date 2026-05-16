@@ -1,5 +1,5 @@
-import type { MethodParams, MethodResult } from "@mrdoge/protocol"
-import type { CallOptions, Connection } from "../connection"
+import type { AiPick, MethodParams, MethodResult } from "@mrdoge/protocol"
+import type { CallOptions, Connection, ListAllOptions } from "../connection"
 
 class Picks {
   constructor(private readonly conn: Connection, private readonly defaults: { locale?: string }) {}
@@ -13,6 +13,28 @@ class Picks {
       { locale: this.defaults.locale, ...params },
       options,
     )
+  }
+
+  /**
+   * Walk every page of `ai.picks.list` and return one combined array. Same
+   * shape as `matches.listAll`. Server-side keyset pagination keeps the
+   * walk drift-safe.
+   */
+  async listAll(
+    params: Omit<MethodParams<"ai.picks.list">, "cursor"> = {},
+    options?: ListAllOptions<AiPick>,
+  ): Promise<AiPick[]> {
+    const { onPage, ...callOptions } = options ?? {}
+    const result: AiPick[] = []
+    let cursor: string | undefined
+    do {
+      const page = await this.list({ ...params, cursor }, callOptions)
+      const pageData = page.data as AiPick[]
+      result.push(...pageData)
+      onPage?.(pageData, result)
+      cursor = page.pagination.nextCursor ?? undefined
+    } while (cursor)
+    return result
   }
 }
 

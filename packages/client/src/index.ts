@@ -15,7 +15,7 @@
 
 export { MrDoge, type MrDogeOptions, DEFAULT_BASE_URL } from "./client"
 export { Subscription } from "./subscription"
-export type { CallOptions } from "./connection"
+export type { CallOptions, ListAllOptions } from "./connection"
 export type { AuthEndpointResponse, AuthEndpointFetcher } from "./token-manager"
 export {
   MrDogeError,

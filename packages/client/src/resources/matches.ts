@@ -1,4 +1,5 @@
 import type {
+  Match,
   MethodParams,
   MethodResult,
   MatchSelect,
@@ -7,7 +8,7 @@ import type {
   SubscriptionClosedParams,
 } from "@mrdoge/protocol"
 import type { MrDogeHttpClient } from "@mrdoge/http"
-import type { CallOptions, Connection } from "../connection"
+import type { CallOptions, Connection, ListAllOptions } from "../connection"
 import { Subscription, PENDING_SUB_ID } from "../subscription"
 
 interface Defaults {
@@ -62,6 +63,34 @@ export class Matches {
       },
       options,
     )
+  }
+
+  /**
+   * Walk every page of `matches.list` and return one combined array. The
+   * helper drives the cursor for you — pass everything except `cursor`,
+   * including `limit` for page size. AbortSignal in `options` aborts the
+   * whole walk (the in-flight page rejects, `listAll` rethrows). `onPage`
+   * fires after each page so callers can render progressively.
+   *
+   * The server uses keyset cursor pagination, so the walk is drift-safe —
+   * rows added/removed/reordered during the walk don't cause duplicates or
+   * skips across page boundaries.
+   */
+  async listAll(
+    params: Omit<MatchesListParams, "cursor"> = {},
+    options?: ListAllOptions<Match>,
+  ): Promise<Match[]> {
+    const { onPage, ...callOptions } = options ?? {}
+    const result: Match[] = []
+    let cursor: string | undefined
+    do {
+      const page = await this.list({ ...params, cursor }, callOptions)
+      const pageData = page.data as Match[]
+      result.push(...pageData)
+      onPage?.(pageData, result)
+      cursor = page.pagination.nextCursor ?? undefined
+    } while (cursor)
+    return result
   }
 
   get(

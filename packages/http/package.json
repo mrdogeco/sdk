@@ -1,6 +1,6 @@
 {
   "name": "@mrdoge/http",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Mr. Doge HTTP-only SDK. Zero runtime deps beyond @mrdoge/protocol. Works anywhere fetch exists: Node, browsers, React Native, Cloudflare Workers, Vercel Edge, Lambda.",
   "license": "Apache-2.0",
   "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/http",

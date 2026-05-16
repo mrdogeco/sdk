@@ -32,6 +32,16 @@ import {
 export interface CallOptions {
   signal?: AbortSignal
 }
+
+/**
+ * Options for `listAll` cursor-walk helpers. Aborting via `signal` cancels
+ * the in-flight page; the helper rethrows the `AbortError`. `onPage` fires
+ * after every page lands — pass it to render partial results progressively
+ * (e.g., paint the first page in your UI while later pages keep arriving).
+ */
+export interface ListAllOptions<T> extends CallOptions {
+  onPage?: (page: T[], accumulated: T[]) => void
+}
 import { Emitter } from "./internal/emitter"
 import { DEFAULT_BACKOFF, type BackoffConfig, nextDelay, sleep } from "./internal/backoff"
 import { TokenManager } from "./token-manager"

@@ -35,6 +35,16 @@ export interface CallOptions {
   signal?: AbortSignal
 }
 
+/**
+ * Options for `listAll` cursor-walk helpers. `signal` aborts the in-flight
+ * page; the helper rethrows the `AbortError`. `onPage` fires after every
+ * page lands — pass it to stream partial results into your store while the
+ * walk continues.
+ */
+export interface ListAllOptions<T> extends CallOptions {
+  onPage?: (page: T[], accumulated: T[]) => void
+}
+
 // Terminal close codes — see PROTOCOL.md §10.
 const TERMINAL_CLOSE_CODES = new Set([4001, 4002, 4003, 4029])
 
