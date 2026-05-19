@@ -51,11 +51,11 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10)
 
   // ─── Discovery ─────────────────────────────────────────────────────────
-  // With filters (date / sportName / status), regions and competitions come
+  // With filters (date / sports / status), regions and competitions come
   // back with `eventCount` so you can size empty states or sort by activity
   // without a separate `matches.list` round-trip.
   console.log(`→ regions.list (date=${today}, sport=soccer)`)
-  const regions = await mrdoge.regions.list({ date: today, sportName: "soccer" })
+  const regions = await mrdoge.regions.list({ date: today, sports: ["soccer"] })
   console.log(`   ${regions.length} regions with soccer today`)
   for (const r of regions.slice(0, 3)) {
     console.log(`     ${r.name} — ${r.eventCount ?? 0} events, ${r.competitionCount ?? 0} competitions`)
@@ -64,7 +64,7 @@ async function main() {
   console.log(`→ competitions.list (date=${today}, sport=soccer, limit=5)`)
   const competitions = await mrdoge.competitions.list({
     date: today,
-    sportName: "soccer",
+    sports: ["soccer"],
     limit: 5,
   })
   for (const c of competitions) {
@@ -90,7 +90,7 @@ async function main() {
   console.log(`→ matches.list (date=${today}, sport=soccer) with select`)
   const page = await mrdoge.matches.list({
     date: today,
-    sportName: "soccer",
+    sports: ["soccer"],
     limit: 5,
     select: listSelect,
   })
@@ -110,13 +110,58 @@ async function main() {
     console.log(`   ${detail.markets.length} markets · ${detail.stats ? "with stats" : "no stats"}`)
   }
 
+  // ─── Auto-paginate: walk every page in one call ────────────────────────
+  // `listAll` drives the cursor for you and returns the combined array.
+  // Pass an `onPage` callback if you want to render progressively while
+  // the walk continues. Server-side keyset pagination keeps it drift-safe.
+  console.log(`→ matches.listAll (date=${today}, sport=soccer)`)
+  const allToday = await mrdoge.matches.listAll(
+    {
+      date: today,
+      sports: ["soccer"],
+      limit: 100,
+      status: ["upcoming", "live", "completed"],
+      select: listSelect,
+    },
+    {
+      onPage: (_page, accumulated) =>
+        console.log(`   …${accumulated.length} matches so far`),
+    },
+  )
+  console.log(`   total: ${allToday.length} matches across all pages`)
+
+  // ─── Per-call AbortController ──────────────────────────────────────────
+  // Every method accepts `options.signal`. If it fires, the in-flight
+  // request is dropped and the promise rejects with AbortError. Composes
+  // cleanly with React's `useEffect` cleanup and Node's AbortSignal.timeout.
+  const ac = new AbortController()
+  setTimeout(() => ac.abort(), 50) // bail out fast just to demonstrate
+  try {
+    await mrdoge.matches.list(
+      { date: today, sports: ["soccer"], limit: 5 },
+      { signal: ac.signal },
+    )
+  } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      console.log("→ matches.list aborted via signal (expected)")
+    } else {
+      throw err
+    }
+  }
+
+  // Note: the first `matches.list` / `regions.list` call above ran over
+  // HTTP transparently — `@mrdoge/client` and `@mrdoge/node` race HTTP
+  // against the WS handshake on cold start, so reads land in ~200ms
+  // instead of waiting for the socket to open. Once WS is open,
+  // subsequent reads use it. No customer code change required.
+
   // ─── Live subscription (server-side filter + projected pushes) ─────────
   // Subscribing returns a handle with the initial snapshot plus typed `.on(...)`
   // listeners for incoming pushes. Each push carries the FULL latest state
   // (projected by the selector) — replace your local copy, don't merge.
   console.log("→ matches.subscribeLive (sport=soccer)")
   const live = await mrdoge.matches.subscribeLive({
-    sportName: "soccer",
+    sports: ["soccer"],
     select: listSelect,
   })
   console.log(`   snapshot: ${live.snapshot.length} live soccer matches`)

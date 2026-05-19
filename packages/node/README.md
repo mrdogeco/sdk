@@ -48,7 +48,7 @@ for (const m of today.data) {
 
 ```ts
 const liveSerieA = await mrdoge.matches.list({
-  competitionId: "serie-a",
+  competitionIds: ["serie-a"],
   status: ["live"],
 })
 ```
@@ -85,7 +85,7 @@ Updates carry the **full latest state**, not a diff. You replace your local copy
 ### 5. Subscribe to every live match globally
 
 ```ts
-const live = await mrdoge.matches.subscribeLive({ sportName: "soccer" })
+const live = await mrdoge.matches.subscribeLive({ sports: ["soccer"] })
 
 console.log(`${live.snapshot.length} matches live right now`)
 

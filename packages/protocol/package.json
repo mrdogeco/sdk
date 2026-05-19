@@ -1,6 +1,6 @@
 {
   "name": "@mrdoge/protocol",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Wire-format spec and shared Zod schemas for the Mr. Doge SDK protocol",
   "license": "Apache-2.0",
   "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/protocol",

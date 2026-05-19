@@ -37,7 +37,7 @@ export const Region = z.object({
   /** Localized region name (e.g. "England" / "Inglaterra"). Translation is server-side. */
   name: z.string(),
   /**
-   * Number of events matching the request's filters (`date`, `sportName`,
+   * Number of events matching the request's filters (`date`, `sports`,
    * `status`). Present only when at least one filter is provided to
    * `regions.list` — otherwise omitted. Use to size empty states / sort
    * regions by activity without round-tripping `matches.list`.
@@ -62,7 +62,7 @@ export const Competition = z.object({
   regionId: RegionId,
   /**
    * Number of events matching the request's filters. Present only when
-   * `competitions.list` was called with `date` / `sportName` / `status` —
+   * `competitions.list` was called with `date` / `sports` / `status` —
    * otherwise omitted.
    */
   eventCount: z.number().int().nonnegative().optional(),

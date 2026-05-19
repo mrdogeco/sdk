@@ -91,14 +91,14 @@ export const methods = {
 
   "regions.list": {
     params: z.object({
-      /** Filter to regions that have matches on a specific date (YYYY-MM-DD). */
-      sportName: z.string().optional(),
+      /** Filter to regions that have matches in the listed sports. */
+      sports: z.array(z.string()).optional(),
       status: z.array(R.MatchStatus).optional(),
       ...DateRange,
       ...LocaleAndTimezone,
     }),
     /**
-     * When at least one filter is provided (date, sportName, status), each
+     * When at least one filter is provided (date, sports, status), each
      * returned region carries `eventCount` and `competitionCount` reflecting
      * the filter set. With no filters, returns all regions sans counts.
      */
@@ -107,8 +107,8 @@ export const methods = {
 
   "competitions.list": {
     params: z.object({
-      regionId: R.RegionId.optional(),
-      sportName: z.string().optional(),
+      regionIds: z.array(R.RegionId).optional(),
+      sports: z.array(z.string()).optional(),
       status: z.array(R.MatchStatus).optional(),
       /** Max number of competitions to return. Server caps at 200. */
       limit: z.number().int().positive().max(200).optional(),
@@ -124,9 +124,9 @@ export const methods = {
 
   "teams.list": {
     params: z.object({
-      sportName: z.string().optional(),
-      regionId: R.RegionId.optional(),
-      competitionId: R.CompetitionId.optional(),
+      sports: z.array(z.string()).optional(),
+      regionIds: z.array(R.RegionId).optional(),
+      competitionIds: z.array(R.CompetitionId).optional(),
       /** Case-insensitive substring match against team name. */
       search: z.string().min(1).optional(),
       /** Max number of teams. Server caps at 500. */
@@ -163,11 +163,11 @@ export const methods = {
 
   "matches.list": {
     params: z.object({
-      competitionId: R.CompetitionId.optional(),
-      regionId: R.RegionId.optional(),
-      /** Filter by team — returns matches where the team is either home or away. */
-      teamId: R.TeamId.optional(),
-      sportName: z.string().optional(),
+      competitionIds: z.array(R.CompetitionId).optional(),
+      regionIds: z.array(R.RegionId).optional(),
+      /** Filter by teams — returns matches where any listed team is home or away. */
+      teamIds: z.array(R.TeamId).optional(),
+      sports: z.array(z.string()).optional(),
       status: z.array(R.MatchStatus).optional(),
       /**
        * Optional field selector. When omitted, the full `Match` shape is
@@ -198,7 +198,7 @@ export const methods = {
 
   "matches.trending": {
     params: z.object({
-      sportName: z.string().optional(),
+      sports: z.array(z.string()).optional(),
       status: z.array(R.MatchStatus).optional(),
       /** Result count. Server default 5, capped at 50. */
       limit: z.number().int().positive().max(50).optional(),
@@ -212,8 +212,8 @@ export const methods = {
   "matches.search": {
     params: z.object({
       query: z.string().min(2),
-      /** Filter to a single sport. */
-      sportName: z.string().optional(),
+      /** Restrict the search to one or more sports. */
+      sports: z.array(z.string()).optional(),
       /** Filter by match status (upcoming/live/completed). */
       status: z.array(R.MatchStatus).optional(),
       limit: z.number().int().positive().max(20).optional(),
@@ -232,9 +232,9 @@ export const methods = {
    */
   "matches.getLive": {
     params: z.object({
-      sportName: z.string().optional(),
-      regionId: R.RegionId.optional(),
-      competitionId: R.CompetitionId.optional(),
+      sports: z.array(z.string()).optional(),
+      regionIds: z.array(R.RegionId).optional(),
+      competitionIds: z.array(R.CompetitionId).optional(),
       select: R.SelectorTree.optional(),
       ...LocaleOnly,
     }),
@@ -244,16 +244,16 @@ export const methods = {
   "matches.subscribeLive": {
     params: z.object({
       /**
-       * Filter the live stream to a single sport. Applies to both the initial
+       * Filter the live stream to one or more sports. Applies to both the initial
        * snapshot and subsequent `match.upd`/`match.del` pushes. Saves
        * bandwidth dramatically vs subscribing globally and filtering
        * client-side.
        */
-      sportName: z.string().optional(),
-      /** Filter to a single region (additive with `sportName`). */
-      regionId: R.RegionId.optional(),
-      /** Filter to a single competition (additive with `sportName`/`regionId`). */
-      competitionId: R.CompetitionId.optional(),
+      sports: z.array(z.string()).optional(),
+      /** Filter to one or more regions (additive with `sports`). */
+      regionIds: z.array(R.RegionId).optional(),
+      /** Filter to one or more competitions (additive with `sports`/`regionIds`). */
+      competitionIds: z.array(R.CompetitionId).optional(),
       /**
        * Optional field selector applied to BOTH the initial `snapshot` and
        * subsequent `match.upd` pushes. Saves bandwidth on long-lived live
@@ -293,8 +293,8 @@ export const methods = {
 
   "ai.picks.list": {
     params: z.object({
-      competitionId: R.CompetitionId.optional(),
-      regionId: R.RegionId.optional(),
+      competitionIds: z.array(R.CompetitionId).optional(),
+      regionIds: z.array(R.RegionId).optional(),
       status: z.array(R.MatchStatus).optional(),
       ...DateRange,
       ...Cursor,

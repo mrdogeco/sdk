@@ -164,16 +164,17 @@ The v1 surface is 11 methods + 2 protocol methods (`auth`, `subscription.cancel`
 | Method | Kind | Params | Result | Notes |
 |---|---|---|---|---|
 | `auth` | request | `{ apiKey }` | `{ ok: true }` | Required first message |
-| `regions.list` | request | `{ locale? }` | `Region[]` | |
-| `competitions.list` | request | `{ regionId?, sportName?, locale? }` | `Competition[]` | |
-| `teams.list` | request | `{ sportName?, regionId?, competitionId?, locale? }` | `Team[]` | |
-| `matches.list` | request | `{ competitionId?, regionId?, sportName?, date?, startDate?, endDate?, status?, cursor?, limit?, timezone?, locale? }` | `{ data: Match[], pagination: Pagination }` | Cursor-paginated |
+| `regions.list` | request | `{ sports?, status?, date?, startDate?, endDate?, locale? }` | `Region[]` | |
+| `competitions.list` | request | `{ regionIds?, sports?, status?, limit?, date?, startDate?, endDate?, locale? }` | `Competition[]` | |
+| `teams.list` | request | `{ sports?, regionIds?, competitionIds?, search?, limit?, locale? }` | `Team[]` | |
+| `matches.list` | request | `{ competitionIds?, regionIds?, teamIds?, sports?, status?, date?, startDate?, endDate?, cursor?, limit?, timezone?, locale? }` | `{ data: Match[], pagination: Pagination }` | Cursor-paginated |
 | `matches.get` | request | `{ id, locale? }` | `MatchDetail` | |
-| `matches.trending` | request | `{ sportName?, status?, timezone?, locale? }` | `Match[]` | |
-| `matches.search` | request | `{ query, limit?, locale? }` | `Match[]` | |
-| `matches.subscribeLive` | subscription | `{ sportName? }` | `{ sub, snapshot: Match[] }` | Pushes: `match.upd`, `match.del` |
+| `matches.trending` | request | `{ sports?, status?, limit?, timezone?, locale? }` | `Match[]` | |
+| `matches.search` | request | `{ query, sports?, status?, limit?, locale? }` | `Match[]` | |
+| `matches.getLive` | request | `{ sports?, regionIds?, competitionIds?, locale? }` | `Match[]` | One-shot snapshot of live matches |
+| `matches.subscribeLive` | subscription | `{ sports?, regionIds?, competitionIds? }` | `{ sub, snapshot: Match[] }` | Pushes: `match.upd`, `match.del` |
 | `matches.subscribe` | subscription | `{ matchId }` | `{ sub, snapshot: MatchDetail }` | Pushes: `stats.upd`, `odds.upd`, `status.upd` |
-| `ai.picks.list` | request | `{ date?, startDate?, endDate?, status?, competitionId?, regionId?, cursor?, limit?, locale? }` | `{ data: AiPick[], pagination: Pagination }` | Cursor-paginated |
+| `ai.picks.list` | request | `{ date?, startDate?, endDate?, status?, competitionIds?, regionIds?, cursor?, limit?, locale? }` | `{ data: AiPick[], pagination: Pagination }` | Cursor-paginated |
 | `ai.recommendations.list` | request | `{ matchId?, confidence?, minEdge?, limit?, locale? }` | `Recommendation[]` | |
 | `subscription.cancel` | request | `{ sub }` | `{ ok: true }` | Stops a specific subscription |
 

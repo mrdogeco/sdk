@@ -1,6 +1,6 @@
 {
   "name": "@mrdoge/node",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Mr. Doge Node SDK — server-side WebSocket + HTTP client. Authenticate with an `sk_live_...` API key and stream live sports data.",
   "license": "Apache-2.0",
   "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/node",

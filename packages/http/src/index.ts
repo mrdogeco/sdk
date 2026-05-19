@@ -8,7 +8,7 @@
  * ```ts
  * import { createHttpClient } from "@mrdoge/http"
  * const http = createHttpClient({ apiKey: process.env.MRDOGE_API_KEY! })
- * const matches = await http.call("matches.getLive", { sportName: "soccer" })
+ * const matches = await http.call("matches.getLive", { sports: ["soccer"] })
  * ```
  *
  * Browser / React Native:

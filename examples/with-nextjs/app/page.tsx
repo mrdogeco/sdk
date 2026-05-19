@@ -22,6 +22,15 @@ const LIST_SELECT: MatchSelect = {
   stats: { clock: { display: true }, homeScore: true, awayScore: true },
 }
 
+// Team logos are served by odds-api as a public CDN endpoint —
+// no auth required, no SDK call. Missing images return a 404 which
+// the `<img>` falls back from gracefully via the `onError` handler.
+// Override `IMAGE_BASE_URL` if you're running odds-api locally.
+const IMAGE_BASE_URL = "https://api.mrdoge.co"
+function teamLogoUrl(teamId: number | string): string {
+  return `${IMAGE_BASE_URL}/images/teams/${teamId}.png`
+}
+
 type ConnState = "idle" | "connecting" | "connected" | "error"
 
 export default function Page() {
@@ -143,8 +152,9 @@ export default function Page() {
             >
               <div>
                 <div className="teams">
-                  {m.homeTeam.name} <span style={{ color: "#555" }}>vs</span>{" "}
-                  {m.awayTeam.name}
+                  <TeamLabel teamId={m.homeTeam.id} name={m.homeTeam.name} />
+                  <span style={{ color: "#555", margin: "0 6px" }}>vs</span>
+                  <TeamLabel teamId={m.awayTeam.id} name={m.awayTeam.name} />
                   {m.stats && (
                     <span style={{ marginLeft: 8, color: "#aaa" }}>
                       {m.stats.homeScore}–{m.stats.awayScore}
@@ -187,5 +197,36 @@ export default function Page() {
         })}
       </div>
     </main>
+  )
+}
+
+/**
+ * Team name with its logo prefixed. The logo lives at a public CDN-style
+ * endpoint on odds-api (no auth, no SDK call). On 404 — typically a team
+ * we don't have an image for — the placeholder background stays visible.
+ */
+function TeamLabel({
+  teamId,
+  name,
+}: {
+  teamId: number | string
+  name: string
+}) {
+  const [broken, setBroken] = useState(false)
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center" }}>
+      {!broken ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={teamLogoUrl(teamId)}
+          alt=""
+          className="team-logo"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <span className="team-logo team-logo-fallback" aria-hidden />
+      )}
+      {name}
+    </span>
   )
 }
