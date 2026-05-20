@@ -7,14 +7,14 @@ A runnable end-to-end example showing both halves of the Mr. Doge SDK working to
 
 The API key never leaves the server. The browser receives only short-lived JWTs (10-minute TTL by default).
 
-This example uses **Free-tier methods only** (`matches.list`, `matches.get`) so it runs against any account. Paid tiers unlock live updates, AI picks, and more — see the [pricing](https://mrdoge.ai/pricing) page.
+This example uses **Starter-tier methods** (`matches.list`, `matches.get`) so it runs on every Mr. Doge plan. Growth adds live streams; Business adds per-match streams + AI — see the [pricing page](https://mrdoge.ai/developers#pricing). Every plan ships with a 7-day free trial.
 
 ## What you'll see
 
 A page that lists today's matches. Click any row to expand it — the SDK fetches the full `MatchDetail` (markets, odds, stats if available) on demand.
 
 ```
-Connected — tier "free"
+Connected — tier "starter"
 
 Today's matches (12) — 2026-05-13
 

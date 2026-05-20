@@ -1,6 +1,6 @@
 {
   "name": "mrdoge-sdk-monorepo",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Mr. Doge open-source SDKs and protocol",
   "license": "Apache-2.0",

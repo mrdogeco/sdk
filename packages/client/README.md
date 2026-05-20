@@ -55,12 +55,12 @@ Identical to `@mrdoge/node` (minus `tokens.create`, which is server-only):
 |---|---|
 | `mrdoge.regions` | `list` |
 | `mrdoge.competitions` | `list` |
-| `mrdoge.teams` | `list` |
-| `mrdoge.matches` | `list`, `get`, `trending`, `search`, `subscribeLive`, `subscribe` |
-| `mrdoge.ai.picks` | `list` |
+| `mrdoge.teams` | `list`, `get`, `form` |
+| `mrdoge.matches` | `list`, `listAll`, `get`, `trending`, `search`, `getLive`, `subscribeLive`, `subscribe` |
+| `mrdoge.ai.picks` | `list`, `listAll` |
 | `mrdoge.ai.recommendations` | `list` |
 
-Available methods depend on your subscription tier. Free has discovery + static reads only; live data and AI features require paid tiers. Calling a tier-locked method returns a `ForbiddenError` with the upgrade URL in the message.
+Available methods depend on your subscription tier. Starter has discovery + reads; Growth adds live data; Business adds per-match streams and AI. Every plan ships with a 7-day free trial. Calling a tier-locked method returns a `ForbiddenError` with the upgrade URL in the message.
 
 ## Subscriptions
 
@@ -119,7 +119,7 @@ try {
 } catch (err) {
   if (err instanceof ForbiddenError) {
     // tier doesn't include AI; show upgrade prompt
-    console.log(err.data) // { method: "ai.picks.list", tier: "growth" }
+    console.log(err.data) // { method: "ai.picks.list", tier: "starter" }
   } else if (err instanceof RateLimitError) {
     await sleep(err.retryAfterMs)
   } else if (err instanceof AuthEndpointError) {

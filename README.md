@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@mrdoge/node"><code>@mrdoge/node</code></a> •
-  <a href="https://docs.mrdoge.co">Docs</a> •
+  <a href="https://mrdoge.ai/docs">Docs</a> •
   <a href="https://x.com/mrdogeapp">@mrdogeapp</a>
 </p>
 
@@ -16,9 +16,10 @@
 
 | Package | What it is |
 |---|---|
-| [`@mrdoge/node`](./packages/node) | Node / TypeScript SDK — server-side. Holds your `sk_live_...` key, mints tokens, makes data calls. |
-| [`@mrdoge/client`](./packages/client) | Browser / React Native / edge SDK — client-side. No API key; authenticates via tokens minted by your backend. |
-| [`@mrdoge/protocol`](./packages/protocol) | Wire-format spec + Zod schemas + JSON Schema artifact. Read this to build an SDK in any language. |
+| [`@mrdoge/node`](./packages/node) | Node / TypeScript SDK — server-side. Holds your `sk_live_...` key, mints tokens, makes data calls over HTTP + WebSocket. |
+| [`@mrdoge/client`](./packages/client) | Browser / React Native SDK — client-side. No API key; authenticates via tokens minted by your backend. HTTP + WebSocket. |
+| [`@mrdoge/http`](./packages/http) | Zero-dep HTTP-only client. Works on Lambda, Cloudflare Workers, Vercel Edge, Bun — anywhere `fetch` exists. No WebSocket. |
+| [`@mrdoge/protocol`](./packages/protocol) | Wire-format spec + shared schemas + JSON Schema artifact. Read this to build an SDK in any language. |
 
 ## Get started
 
@@ -51,6 +52,6 @@ Apache 2.0 — see [LICENSE](./LICENSE).
 
 ## Support
 
-- API access, billing, account: support@mrdoge.co
+- API access, billing, account: support@mrdoge.ai
 - Bugs, feature requests: [GitHub Issues](https://github.com/mrdogeco/sdk/issues)
 - Security disclosures: see [SECURITY.md](./SECURITY.md)

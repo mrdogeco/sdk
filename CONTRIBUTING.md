@@ -4,8 +4,8 @@ Thanks for considering a contribution.
 
 ## Reporting issues
 
-- Bugs in the Node SDK or protocol → [open an issue](https://github.com/mrdogeco/sdk/issues).
-- API behavior, account, billing → support@mrdoge.co (these aren't open-source concerns).
+- Bugs in any SDK package or the protocol → [open an issue](https://github.com/mrdogeco/sdk/issues).
+- API behavior, account, billing → support@mrdoge.ai (these aren't open-source concerns).
 - Security vulnerabilities → see [SECURITY.md](./SECURITY.md), do **not** open a public issue.
 
 ## Building locally
@@ -21,11 +21,13 @@ pnpm test
 ```
 packages/
   protocol/   Wire spec + Zod schemas + JSON Schema artifact
-  node/       Node / TypeScript SDK
+  node/       Server-side SDK (HTTP + WebSocket, API-key auth)
+  client/     Browser / React Native SDK (HTTP + WebSocket, JWT auth)
+  http/       Zero-dep HTTP-only client for edge / serverless
 examples/     Runnable example apps
 ```
 
-The Node SDK depends on `@mrdoge/protocol` via a workspace reference. Edits in `protocol` propagate without a publish step.
+Every SDK package depends on `@mrdoge/protocol` via a workspace reference. Edits in `protocol` propagate to all of them without a publish step.
 
 ## Pull requests
 

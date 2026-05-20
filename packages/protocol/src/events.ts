@@ -8,7 +8,7 @@ import { Match, MatchDetail, MatchStats, Market, MatchStatus, MatchId } from "./
 export const WelcomeParams = z.object({
   protocolVersion: z.number().int(),
   serverVersion: z.string(),
-  /** Tier of the authenticated key, e.g. "free", "pro", "enterprise". */
+  /** Tier of the authenticated key — `"starter" | "growth" | "business"`. */
   tier: z.string(),
   rateLimit: z.object({
     requestsPerMinute: z.number().int().positive(),

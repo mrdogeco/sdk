@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you believe you've found a security issue in any package in this repository, please email **support@mrdoge.co** rather than opening a public issue. Include:
+If you believe you've found a security issue in any package in this repository, please email **support@mrdoge.ai** rather than opening a public issue. Include:
 
 - A description of the issue
 - Steps to reproduce (proof-of-concept if possible)
@@ -17,4 +17,4 @@ We patch security issues on the latest minor of the current major version. Older
 
 ## Scope
 
-This repository's scope is the **SDK and protocol** packages. Server-side issues (data accuracy, account / billing, API behavior beyond the wire spec) should be reported to support@mrdoge.co.
+This repository's scope is the **SDK and protocol** packages. Server-side issues (data accuracy, account / billing, API behavior beyond the wire spec) should be reported to support@mrdoge.ai.

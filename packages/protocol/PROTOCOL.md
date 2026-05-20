@@ -92,8 +92,8 @@ Then immediately, as a server push (no `id`):
   "params": {
     "protocolVersion": 1,
     "serverVersion": "2026.05.12-abc1234",
-    "tier": "pro",
-    "rateLimit": { "requestsPerMinute": 600, "subscriptionsMax": 100 }
+    "tier": "growth",
+    "rateLimit": { "requestsPerMinute": 1000, "subscriptionsMax": 100 }
   }
 }
 ```

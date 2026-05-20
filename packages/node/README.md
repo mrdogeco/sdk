@@ -48,7 +48,7 @@ for (const m of today.data) {
 
 ```ts
 const liveSerieA = await mrdoge.matches.list({
-  competitionIds: ["serie-a"],
+  competitionIds: [42],          // numeric competition IDs from competitions.list
   status: ["live"],
 })
 ```
@@ -58,9 +58,9 @@ const liveSerieA = await mrdoge.matches.list({
 ```ts
 const match = await mrdoge.matches.get({ id: "12345" })
 
-console.log(match.score)                  // { home: 2, away: 1 }
-console.log(match.markets.length)         // 28 betting markets
-console.log(match.stats.possession)       // { home: 0.55, away: 0.45 }
+console.log(match.stats?.homeScore, "-", match.stats?.awayScore)
+console.log(match.markets.length)         // every betting market the server has
+console.log(match.stats?.clock?.display)  // localized "HT" / "FT" / "30:00"
 ```
 
 ### 4. Subscribe to one match — get updates as they happen
@@ -69,12 +69,12 @@ console.log(match.stats.possession)       // { home: 0.55, away: 0.45 }
 const sub = await mrdoge.matches.subscribe({ matchId: "12345" })
 
 // Initial state arrives with the subscription
-console.log(sub.snapshot.score)
+console.log(sub.snapshot.stats?.homeScore, "-", sub.snapshot.stats?.awayScore)
 
 // Listen for whatever you care about
-sub.on("stats", (stats) => console.log("stats updated:", stats))
-sub.on("odds",  (odds)  => console.log("odds updated:", odds.markets.length, "markets"))
-sub.on("status", (status) => console.log("status:", status))
+sub.on("stats.upd",  (stats)        => console.log("stats updated:", stats))
+sub.on("odds.upd",   (markets)      => console.log("odds updated:", markets.length, "markets"))
+sub.on("status.upd", ({ status })   => console.log("status:", status))
 
 // When you're done
 await sub.cancel()
@@ -89,12 +89,12 @@ const live = await mrdoge.matches.subscribeLive({ sports: ["soccer"] })
 
 console.log(`${live.snapshot.length} matches live right now`)
 
-live.on("match", (match) => {
+live.on("match.upd", (match) => {
   // a match was updated (could be score, status, anything)
   updateUI(match)
 })
 
-live.on("removed", ({ id }) => {
+live.on("match.del", ({ id }) => {
   // match dropped off the live list (ended)
   removeFromUI(id)
 })
@@ -129,8 +129,15 @@ const picks = await mrdoge.ai.picks.list({
 })
 
 for (const pick of picks.data) {
-  console.log(`${pick.match.homeTeam.name} vs ${pick.match.awayTeam.name}`)
-  console.log(`Mr. Doge says: ${pick.outcome} — confidence ${pick.confidence}`)
+  // `pick.match` is an optional embedded match summary
+  if (pick.match) {
+    console.log(`${pick.match.homeTeam.name} vs ${pick.match.awayTeam.name}`)
+  }
+  // Picks bundle one or more legs — each leg has its own outcome + confidence
+  console.log(`  pickType: ${pick.pickType} · totalOdds: ${pick.totalOdds}`)
+  for (const leg of pick.legs) {
+    console.log(`    → ${leg.outcome} @ ${leg.odds} (${leg.confidence})`)
+  }
 }
 ```
 
@@ -213,15 +220,15 @@ All error classes inherit from `MrDogeError`. Every one carries `.code` (stable 
 The SDK manages its own connection. Most code never touches it. For the rare case you need to observe:
 
 ```ts
-mrdoge.on("connected",     ()                => console.log("up"))
-mrdoge.on("disconnected",  (reason)          => console.log("down:", reason))
-mrdoge.on("reconnecting",  ({ attempt, ms }) => console.log(`retrying in ${ms}ms`))
+mrdoge.on("connected",     ({ welcome })          => console.log("up — tier", welcome.tier))
+mrdoge.on("disconnected",  ({ code, reason })     => console.log("down:", code, reason))
+mrdoge.on("reconnecting",  ({ attempt, delayMs }) => console.log(`retrying in ${delayMs}ms (attempt ${attempt})`))
 
 // Force-close everything (rare; SDK does this on process exit anyway)
 await mrdoge.close()
 ```
 
-On reconnect, every active subscription is automatically resubscribed and replays a fresh snapshot. You'll see one `snap` event per subscription with current state — **replace, don't merge**.
+On reconnect, every active subscription is automatically resubscribed and replays a fresh snapshot. You'll see one `snapshot` event per subscription with current state — **replace, don't merge**.
 
 ---
 
@@ -240,7 +247,7 @@ m.markets.forEach(market => {
 })
 ```
 
-Types are generated from the same Zod schemas the server validates against. If a server response shape changes, the SDK types change in lockstep.
+Types are generated from the same schemas the server validates against. If a server response shape changes, the SDK types change in lockstep.
 
 ---
 
@@ -260,14 +267,20 @@ Types are generated from the same Zod schemas the server validates against. If a
 | `regions.list` | List regions |
 | `competitions.list` | List competitions, filterable by region/sport |
 | `teams.list` | List teams, filterable |
+| `teams.get` | Single team detail |
+| `teams.form` | Recent form aggregate (W/D/L, streak, sample matches) |
 | `matches.list` | Paginated matches with filters |
+| `matches.listAll` | Auto-paginated walk of `matches.list` |
 | `matches.get` | Full match detail |
 | `matches.trending` | Trending matches |
 | `matches.search` | Text search |
+| `matches.getLive` | One-shot snapshot of live matches (no subscription) |
 | `matches.subscribeLive` | Stream live updates across all matches |
 | `matches.subscribe` | Stream updates for one match |
 | `ai.picks.list` | Mr. Doge's AI picks |
+| `ai.picks.listAll` | Auto-paginated walk of `ai.picks.list` |
 | `ai.recommendations.list` | Betting recommendations with edge & confidence |
+| `tokens.create` | Mint a short-lived JWT for browser/RN consumption |
 
 Full param/result types in [PROTOCOL.md §6](../protocol/PROTOCOL.md#6-methods).
 
@@ -275,6 +288,6 @@ Full param/result types in [PROTOCOL.md §6](../protocol/PROTOCOL.md#6-methods).
 
 ## Support
 
-- API issues, account, billing: support@mrdoge.co
+- API issues, account, billing: support@mrdoge.ai
 - SDK bugs and feature requests: file an issue
 - Wire-level protocol: [PROTOCOL.md](../protocol/PROTOCOL.md)
