@@ -138,23 +138,41 @@ mrdoge.on("reconnecting",  ({ attempt, delayMs })   => console.log("retrying"))
 await mrdoge.close()
 ```
 
-## React Native notes
+## Focus & visibility — `pingOrReconnect()`
 
-Works out of the box in modern RN (0.60+). For best behavior across app backgrounding:
+The SDK only knows about its own socket; it has no way to subscribe to OS-level focus signals (DOM `visibilitychange`, RN `AppState`, `online`/`offline`). When the device wakes from a backgrounded state or its network drops and recovers, the underlying WebSocket may be dead while the SDK's internal reconnect loop is still mid-backoff sleep — meaning the next user interaction pays that backoff delay before reconnecting.
+
+`pingOrReconnect()` is the bridge. Call it on every focus signal your platform emits. It's a no-op when the socket is healthy, fires a reconnect when it's dead, and wakes the backoff loop when one is sleeping.
 
 ```ts
+// React Native
 import { AppState } from "react-native"
 import { MrDoge } from "@mrdoge/client"
 
 const mrdoge = new MrDoge({ authEndpoint: "..." })
 
-// Optional: nudge the connection awake when the app foregrounds
 AppState.addEventListener("change", (state) => {
-  if (state === "active") mrdoge.connect()
+  if (state === "active") mrdoge.pingOrReconnect()
 })
 ```
 
-The SDK auto-reconnects on the next call regardless; the explicit `connect()` just makes the data ready when the user opens the app rather than after their first interaction.
+```ts
+// Browser / Next.js (client component)
+import { MrDoge } from "@mrdoge/client"
+
+const mrdoge = new MrDoge({ authEndpoint: "/api/mrdoge/token" })
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") mrdoge.pingOrReconnect()
+})
+window.addEventListener("online", () => mrdoge.pingOrReconnect())
+```
+
+```ts
+// Server-side (Node / edge) — no focus concept, you don't need this
+```
+
+`pingOrReconnect()` never throws — failures fall through to the SDK's normal reconnect machinery (or to the next call if there are no active subscriptions).
 
 ## License
 

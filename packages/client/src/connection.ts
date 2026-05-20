@@ -43,7 +43,7 @@ export interface ListAllOptions<T> extends CallOptions {
   onPage?: (page: T[], accumulated: T[]) => void
 }
 import { Emitter } from "./internal/emitter"
-import { DEFAULT_BACKOFF, type BackoffConfig, nextDelay, sleep } from "./internal/backoff"
+import { DEFAULT_BACKOFF, type BackoffConfig, nextDelay } from "./internal/backoff"
 import { TokenManager } from "./token-manager"
 
 const TERMINAL_CLOSE_CODES = new Set([4001, 4002, 4003, 4029])
@@ -115,6 +115,7 @@ export class Connection {
   private closed = false
   private reconnectAttempt = 0
   private reconnectAbort: AbortController | null = null
+  private reconnectWakeUp: (() => void) | null = null
   private refreshTimer: ReturnType<typeof setTimeout> | null = null
   private pendingWelcome: PendingRequest | null = null
 
@@ -138,6 +139,76 @@ export class Connection {
       this.connectingPromise = null
     })
     return this.connectingPromise
+  }
+
+  /**
+   * Verify the connection is alive; reconnect if it isn't. Cheap and safe to
+   * call on every focus/visibility/online event — no-op when the socket is
+   * healthy, fires a reconnect when it's dead, wakes the backoff loop when
+   * one is sleeping.
+   *
+   * Wire from your platform's focus signal — the SDK has no DOM/RN runtime
+   * dependency and can't subscribe to these events on its own:
+   *
+   * ```ts
+   * // React Native
+   * AppState.addEventListener("change", (s) => {
+   *   if (s === "active") mrdoge.pingOrReconnect()
+   * })
+   *
+   * // Browser / Next.js client
+   * document.addEventListener("visibilitychange", () => {
+   *   if (document.visibilityState === "visible") mrdoge.pingOrReconnect()
+   * })
+   * window.addEventListener("online", () => mrdoge.pingOrReconnect())
+   * ```
+   *
+   * Never throws — failures fall through to the normal reconnect machinery
+   * (or to the next call if no subscriptions are active).
+   */
+  async pingOrReconnect(): Promise<void> {
+    if (this.closed) return
+
+    // Healthy state — nothing to do.
+    if (this.ws?.readyState === WebSocket.OPEN && this.welcome !== null) return
+
+    // Reconnect loop is sleeping in backoff — wake it up so we don't wait
+    // out a stale delay (e.g. the device emerged from a network drop while
+    // the loop was 30s into a backoff). Reset the attempt counter so any
+    // post-wake-up retries start from the min delay: the consumer just
+    // signalled an app-context change, which makes the prior failure
+    // streak stale.
+    if (this.reconnectWakeUp) {
+      this.reconnectAttempt = 0
+      const wake = this.reconnectWakeUp
+      this.reconnectWakeUp = null
+      wake()
+      return
+    }
+
+    // Reconnect loop is active but mid-attempt (not currently sleeping) —
+    // let it finish. Two concurrent openAndAuth calls would race.
+    if (this.reconnectAbort) return
+
+    // Initial connect already in flight — let it finish.
+    if (this.connectingPromise) {
+      try {
+        await this.connectingPromise
+      } catch {
+        // ignore — consumer will retry on the next focus event
+      }
+      return
+    }
+
+    // No connect/reconnect in flight and the WS is bad — kick one off.
+    // `connect()` dedups against any concurrent caller via `connectingPromise`.
+    try {
+      await this.connect()
+    } catch {
+      // Connect failed. If subscriptions exist, handleClose will engage the
+      // reconnect machinery; otherwise the consumer can retry on the next
+      // focus event.
+    }
   }
 
   async call<M extends MethodName>(
@@ -259,7 +330,7 @@ export class Connection {
     })
 
     ws.addEventListener("message", (ev) => this.handleMessage(ev.data))
-    ws.addEventListener("close", (ev) => this.handleClose(ev.code, ev.reason))
+    ws.addEventListener("close", (ev) => this.handleClose(ws, ev.code, ev.reason))
     ws.addEventListener("error", () => this.handleSocketError())
 
     const welcome = await this.performAuth(token)
@@ -277,6 +348,17 @@ export class Connection {
   private async performAuth(token: string): Promise<WelcomeParams> {
     const welcomePromise = new Promise<WelcomeParams>((resolve, reject) => {
       const timer = setTimeout(() => {
+        // Force-close the WS so it doesn't linger in a half-authed limbo
+        // state (ws.readyState === OPEN but welcome === null). Without this,
+        // subsequent `send()` calls would dispatch frames the server has
+        // dropped, and `call()`'s `readyState !== OPEN` HTTP fallback never
+        // engages.
+        this.pendingWelcome = null
+        try {
+          this.ws?.close(4000, "auth_timeout")
+        } catch {
+          // ignore
+        }
         reject(new TimeoutError("Auth timed out waiting for welcome"))
       }, this.config.authTimeoutMs)
       this.pendingWelcome = {
@@ -418,7 +500,14 @@ export class Connection {
     // Unknown notification → ignore (additive-future-changes rule).
   }
 
-  private handleClose(code: number, reason: string): void {
+  private handleClose(closedWs: WebSocket, code: number, reason: string): void {
+    // Ignore stale close events for sockets that have already been replaced.
+    // Can happen after an auth-timeout forces a close: by the time the close
+    // event lands in the event loop, the reconnect loop may have already
+    // opened a fresh socket and assigned it to `this.ws`. Without this
+    // guard, the stale close nulls out the new socket's reference.
+    if (this.ws !== null && this.ws !== closedWs) return
+
     const wasConnected = this.welcome !== null
     this.welcome = null
     this.ws = null
@@ -460,29 +549,71 @@ export class Connection {
     this.reconnectAbort = new AbortController()
     const signal = this.reconnectAbort.signal
 
-    while (!this.closed && this.reconnectAttempt < this.config.maxReconnectAttempts) {
-      this.reconnectAttempt += 1
-      const delayMs = nextDelay(this.reconnectAttempt, this.config.reconnectBackoff)
-      this.emitter.emit("reconnecting", { attempt: this.reconnectAttempt, delayMs })
-      try {
-        await sleep(delayMs, signal)
-      } catch {
-        return
-      }
-      if (this.closed) return
-      try {
-        await this.openAndAuth()
-        this.reconnectAbort = null
-        return
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          // Token may have expired between fetch and use, or been revoked.
-          // Force-refresh and try again on the next loop iteration.
-          this.config.tokenManager.invalidate()
+    try {
+      while (!this.closed && this.reconnectAttempt < this.config.maxReconnectAttempts) {
+        this.reconnectAttempt += 1
+        const delayMs = nextDelay(this.reconnectAttempt, this.config.reconnectBackoff)
+        this.emitter.emit("reconnecting", { attempt: this.reconnectAttempt, delayMs })
+
+        const outcome = await this.waitForReconnectAttempt(delayMs, signal)
+        if (outcome === "shutdown" || this.closed) return
+
+        try {
+          await this.openAndAuth()
+          return
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            // Token may have expired between fetch and use, or been revoked.
+            // Force-refresh and try again on the next loop iteration.
+            this.config.tokenManager.invalidate()
+          }
         }
       }
+    } finally {
+      this.reconnectAbort = null
+      this.reconnectWakeUp = null
     }
-    this.reconnectAbort = null
+  }
+
+  /**
+   * Race the backoff sleep against an external wake-up trigger
+   * (`pingOrReconnect`) so consumers can short-circuit a stale delay when
+   * the device's app-context changes (e.g. foreground after a long
+   * background). Returns "shutdown" if the abort signal fired (close()),
+   * "normal" if the delay elapsed naturally or the wake-up resolved.
+   */
+  private waitForReconnectAttempt(
+    delayMs: number,
+    signal: AbortSignal,
+  ): Promise<"normal" | "shutdown"> {
+    return new Promise((resolve) => {
+      if (signal.aborted) {
+        resolve("shutdown")
+        return
+      }
+      let timer: ReturnType<typeof setTimeout> | null = null
+      const cleanup = () => {
+        if (timer) clearTimeout(timer)
+        signal.removeEventListener("abort", onAbort)
+        if (this.reconnectWakeUp === onWakeUp) {
+          this.reconnectWakeUp = null
+        }
+      }
+      const onAbort = () => {
+        cleanup()
+        resolve("shutdown")
+      }
+      const onWakeUp = () => {
+        cleanup()
+        resolve("normal")
+      }
+      timer = setTimeout(() => {
+        cleanup()
+        resolve("normal")
+      }, delayMs)
+      signal.addEventListener("abort", onAbort)
+      this.reconnectWakeUp = onWakeUp
+    })
   }
 
   private async resubscribeAll(): Promise<void> {

@@ -151,6 +151,32 @@ export class MrDoge {
     return this.connection.connect()
   }
 
+  /**
+   * Verify the connection is alive; reconnect if it isn't. Cheap and safe
+   * to call on every focus/visibility/online event — no-op when the socket
+   * is healthy, fires a reconnect when it's dead, wakes the backoff loop
+   * when one is sleeping.
+   *
+   * The SDK doesn't subscribe to focus events itself (no DOM/RN runtime
+   * dependency). Wire it from your platform:
+   *
+   * ```ts
+   * // React Native
+   * AppState.addEventListener("change", (s) => {
+   *   if (s === "active") mrdoge.pingOrReconnect()
+   * })
+   *
+   * // Browser / Next.js client
+   * document.addEventListener("visibilitychange", () => {
+   *   if (document.visibilityState === "visible") mrdoge.pingOrReconnect()
+   * })
+   * window.addEventListener("online", () => mrdoge.pingOrReconnect())
+   * ```
+   */
+  async pingOrReconnect(): Promise<void> {
+    return this.connection.pingOrReconnect()
+  }
+
   /** Close the connection and cancel every active subscription. */
   async close(): Promise<void> {
     await this.connection.close()
