@@ -273,9 +273,11 @@ export const methods = {
     params: z.object({
       matchId: R.MatchId,
       /**
-       * Optional field selector applied to the initial `snapshot`, `stats.upd`,
-       * and `odds.upd` pushes. (`status.upd` is unaffected — it's a single
-       * `{status}` field.)
+       * Optional field selector applied to the initial `snapshot` and every
+       * `stats.upd` push. (`status.upd` is unaffected — it's a single
+       * `{status}` field.) For live odds on a single match, use the
+       * dedicated `odds.subscribe` resource — this method no longer pushes
+       * `odds.upd`.
        */
       select: R.SelectorTree.optional(),
       ...LocaleOnly,
@@ -284,27 +286,63 @@ export const methods = {
       sub: z.string(),
       snapshot: R.MatchDetail,
     }),
-    pushEvents: ["stats.upd", "odds.upd", "status.upd"] as const,
+    pushEvents: ["stats.upd", "status.upd"] as const,
+  },
+
+  // -------------------------------------------------------------------------
+  // Odds (Business tier)
+  // -------------------------------------------------------------------------
+
+  /**
+   * One-shot snapshot of every live market for a single match. Mirrors the
+   * data that `odds.subscribe` would deliver as its initial snapshot, without
+   * registering a subscription — for cron jobs, edge runtimes, or any caller
+   * that just wants the latest book.
+   */
+  "odds.list": {
+    params: z.object({
+      matchId: R.MatchId,
+      /**
+       * Restrict to one or more market sysnames (e.g.
+       * `["SOCCER_MATCH_RESULT", "SOCCER_UNDER_OVER"]`). When omitted, every
+       * live market on the match is returned.
+       */
+      betTypes: z.array(z.string()).optional(),
+      /** Optional field selector. See `Selector<Market>` / `MarketSelect`. */
+      select: R.SelectorTree.optional(),
+      ...LocaleOnly,
+    }),
+    result: z.array(R.Market),
+  },
+
+  /**
+   * Live-odds subscription for a single match. Push event `odds.upd`
+   * delivers the full latest markets array on every change
+   * (state-snapshot semantics — clients replace, never merge).
+   */
+  "odds.subscribe": {
+    params: z.object({
+      matchId: R.MatchId,
+      /** Restrict pushes to specific market sysnames. */
+      betTypes: z.array(z.string()).optional(),
+      /**
+       * Optional field selector applied to the initial snapshot AND every
+       * `odds.upd` push. Saves bandwidth on long-lived odds subscriptions
+       * where you only render a subset of fields.
+       */
+      select: R.SelectorTree.optional(),
+      ...LocaleOnly,
+    }),
+    result: z.object({
+      sub: z.string(),
+      snapshot: z.array(R.Market),
+    }),
+    pushEvents: ["odds.upd"] as const,
   },
 
   // -------------------------------------------------------------------------
   // AI
   // -------------------------------------------------------------------------
-
-  "ai.picks.list": {
-    params: z.object({
-      competitionIds: z.array(R.CompetitionId).optional(),
-      regionIds: z.array(R.RegionId).optional(),
-      status: z.array(R.MatchStatus).optional(),
-      ...DateRange,
-      ...Cursor,
-      ...LocaleOnly,
-    }),
-    result: z.object({
-      data: z.array(R.AiPick),
-      pagination: R.Pagination,
-    }),
-  },
 
   "ai.recommendations.list": {
     params: z.object({
@@ -312,10 +350,25 @@ export const methods = {
       confidence: R.PickConfidence.optional(),
       /** Minimum edge fraction (0.05 = 5%). */
       minEdge: z.number().min(0).optional(),
-      limit: z.number().int().positive().max(100).optional(),
+      /** Minimum decimal odds (inclusive). */
+      minOdds: z.number().positive().optional(),
+      /** Maximum decimal odds (inclusive). */
+      maxOdds: z.number().positive().optional(),
+      ...Cursor,
       ...LocaleOnly,
     }),
-    result: z.array(R.Recommendation),
+    result: z.object({
+      data: z.array(R.Recommendation),
+      pagination: R.Pagination,
+    }),
+  },
+
+  "ai.recommendations.get": {
+    params: z.object({
+      id: z.string().min(1),
+      ...LocaleOnly,
+    }),
+    result: R.Recommendation,
   },
 } as const
 
@@ -325,8 +378,37 @@ export const methods = {
 
 export type MethodName = keyof typeof methods
 export type MethodDef<M extends MethodName> = (typeof methods)[M]
-export type MethodParams<M extends MethodName> = z.infer<MethodDef<M>["params"]>
 export type MethodResult<M extends MethodName> = z.infer<MethodDef<M>["result"]>
+
+/**
+ * Per-method typed selector shape. Each entry maps a method name to the
+ * `Selector<TargetShape>` for that method's payload. Used to override the
+ * permissive runtime `SelectorTree` in `MethodParams<M>` so callers get
+ * autocomplete on `select: { … }`.
+ *
+ * Methods without a `select` param resolve to `never` and the override is a
+ * no-op (TypeScript intersects the original `MethodParams<M>` only).
+ */
+type SelectShapeFor<M extends MethodName> =
+  M extends "matches.list" | "matches.trending" | "matches.search" | "matches.getLive" | "matches.subscribeLive"
+    ? R.MatchSelect
+    : M extends "matches.get" | "matches.subscribe"
+      ? R.MatchDetailSelect
+      : M extends "odds.list" | "odds.subscribe"
+        ? R.MarketSelect
+        : never
+
+/**
+ * Params for `M`, with `select` overridden to the typed selector for the
+ * method's payload (when applicable). The runtime schema stays permissive
+ * (`SelectorTree`), so the wire-format contract is unaffected; this only
+ * narrows the TypeScript type customers see at call sites.
+ */
+export type MethodParams<M extends MethodName> = [SelectShapeFor<M>] extends [never]
+  ? z.infer<MethodDef<M>["params"]>
+  : Omit<z.infer<MethodDef<M>["params"]>, "select"> & {
+      select?: SelectShapeFor<M>
+    }
 
 /** Methods that emit push events (subscriptions). */
 export type SubscriptionMethodName = {

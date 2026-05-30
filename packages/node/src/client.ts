@@ -5,6 +5,7 @@ import { Regions } from "./resources/regions"
 import { Competitions } from "./resources/competitions"
 import { Teams } from "./resources/teams"
 import { Matches } from "./resources/matches"
+import { Odds } from "./resources/odds"
 import { Ai } from "./resources/ai"
 import { Tokens } from "./resources/tokens"
 
@@ -64,6 +65,7 @@ export class MrDoge {
   readonly competitions: Competitions
   readonly teams: Teams
   readonly matches: Matches
+  readonly odds: Odds
   readonly ai: Ai
   readonly tokens: Tokens
 
@@ -109,6 +111,7 @@ export class MrDoge {
     this.competitions = new Competitions(this.connection, defaults)
     this.teams = new Teams(this.connection, defaults)
     this.matches = new Matches(this.connection, defaults, this.http)
+    this.odds = new Odds(this.connection, defaults)
     this.ai = new Ai(this.connection, defaults)
     this.tokens = new Tokens(this.connection)
   }

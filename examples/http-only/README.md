@@ -14,7 +14,7 @@ For real-time live updates over a persistent connection, use [`@mrdoge/node`](..
 ## Run it
 
 ```bash
-# 1. Sign up at https://mrdoge.ai and create an API key
+# 1. Sign up at https://mrdoge.ai/developers, then mint a key at https://mrdoge.ai/dashboard/keys
 cp .env.example .env
 # edit .env — set MRDOGE_API_KEY=sk_live_your_key_here
 export $(cat .env | xargs)

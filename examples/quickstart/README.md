@@ -12,7 +12,7 @@ Minimal runnable example showing the core of the Mr. Doge SDK in ~70 lines:
 ## Run it
 
 ```bash
-# 1. Sign up at https://mrdoge.ai and create an API key
+# 1. Sign up at https://mrdoge.ai/developers, then mint a key at https://mrdoge.ai/dashboard/keys
 export MRDOGE_API_KEY=sk_live_your_key_here
 
 # 2. From this directory

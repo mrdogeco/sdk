@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { Match, MatchDetail, MatchStats, Market, MatchStatus, MatchId } from "./resources"
+import { Match, MatchStats, Market, MatchStatus, MatchId } from "./resources"
 
 // ---------------------------------------------------------------------------
 // `welcome` notification — sent once after successful `auth`
@@ -26,7 +26,7 @@ export const SubscriptionEventName = z.enum([
   "match.upd",     // matches.subscribeLive: a match's state changed
   "match.del",     // matches.subscribeLive: a match dropped off the live list
   "stats.upd",     // matches.subscribe: latest stats
-  "odds.upd",      // matches.subscribe: latest markets
+  "odds.upd",      // odds.subscribe: latest markets for the match
   "status.upd",    // matches.subscribe: status transition
 ])
 export type SubscriptionEventName = z.infer<typeof SubscriptionEventName>
@@ -49,10 +49,16 @@ const SubStatsUpd = z.object({
   data: MatchStats,
 })
 
+/**
+ * `odds.upd` is emitted by `odds.subscribe` only. The payload is the latest
+ * full markets array for the match (state-snapshot semantics — clients
+ * replace, never merge). Flat array mirrors `match.upd` (which delivers the
+ * full Match, not `{ match: ... }`).
+ */
 const SubOddsUpd = z.object({
   sub: z.string(),
   event: z.literal("odds.upd"),
-  data: z.object({ markets: z.array(Market) }),
+  data: z.array(Market),
 })
 
 const SubStatusUpd = z.object({

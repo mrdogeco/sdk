@@ -30,7 +30,6 @@ const RESOURCE_SCHEMAS = {
   Pagination: resources.Pagination,
   PickConfidence: resources.PickConfidence,
   PickResult: resources.PickResult,
-  AiPick: resources.AiPick,
   Recommendation: resources.Recommendation,
 }
 

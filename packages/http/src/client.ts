@@ -42,7 +42,7 @@ export type HttpMethodName = Exclude<
 
 export interface MrDogeHttpOptions {
   /**
-   * Server-side use. Long-lived `sk_live_...` / `sk_test_...` API key. Never
+   * Server-side use. Long-lived `sk_live_...` API key. Never
    * embed this in a browser bundle — anyone who opens DevTools steals it.
    */
   apiKey?: string

@@ -303,10 +303,6 @@ export type Clock = z.infer<typeof Clock>
  * Customers infer the unit from `sport.name` on the parent `Match`.
  */
 export const MatchStats = z.object({
-  // ---- UI hint -----------------------------------------------------------
-  /** If true, customers should hide stats UI for this match. */
-  hideStats: z.boolean().optional(),
-
   // ---- Unified clock + state + phase ------------------------------------
   /** Unified clock object — see Clock. `null` when no clock data. */
   clock: Clock.nullable(),
@@ -399,13 +395,6 @@ export const MatchStats = z.object({
   awayPlayersOffsides: z.array(StatPlayer).optional(),
   homePlayersWoodworkHits: z.array(StatPlayer).optional(),
   awayPlayersWoodworkHits: z.array(StatPlayer).optional(),
-
-  // ---- Live betting markets ---------------------------------------------
-  /**
-   * Live-betting market snapshots. Shape is upstream-defined for now; will
-   * be promoted to a typed schema once we settle the public contract.
-   */
-  liveBetItems: z.array(z.unknown()).optional(),
 })
 export type MatchStats = z.infer<typeof MatchStats>
 
@@ -475,9 +464,12 @@ export const SelectorTree: z.ZodType<SelectorTreeValue> = z.lazy(() =>
 )
 
 /**
- * Match shape returned by list/search/trending endpoints. Lean by design;
- * includes the two most relevant markets (match result + under/over). For
- * full markets + stats, use `matches.get` or `matches.subscribe`.
+ * Match shape returned by list/search/trending endpoints. Lean by design —
+ * identity + teams + sport/competition/region + stats + clock. Markets live
+ * on a separate resource — see `odds.list` / `odds.subscribe` — so a match
+ * payload doesn't have to carry an order book every customer renders or
+ * pays bandwidth for. For full match detail (with `views`), use
+ * `matches.get` or `matches.subscribe`.
  */
 export const Match = z.object({
   id: MatchId,
@@ -488,7 +480,6 @@ export const Match = z.object({
   sport: SportRef.nullable(),
   competition: CompetitionRef,
   region: RegionRef,
-  markets: z.array(Market),
   /** Present only on `completed` matches in list responses. */
   stats: MatchStats.nullable().optional(),
 })
@@ -499,7 +490,8 @@ export type MatchSelect = Selector<Match>
 
 /**
  * Full match detail returned by `matches.get` and as the initial snapshot of
- * `matches.subscribe`. Carries every market and current stats.
+ * `matches.subscribe`. Stats + clock are populated; markets are on the
+ * dedicated `odds.*` resource.
  */
 export const MatchDetail = Match.extend({
   views: z.number().int().nonnegative().optional(),
@@ -508,6 +500,9 @@ export type MatchDetail = z.infer<typeof MatchDetail>
 
 /** Convenience alias — typed selector for the `MatchDetail` shape. */
 export type MatchDetailSelect = Selector<MatchDetail>
+
+/** Convenience alias — typed selector for the `Market` shape. */
+export type MarketSelect = Selector<Market>
 
 // ---------------------------------------------------------------------------
 // Pagination
@@ -524,7 +519,7 @@ export const Pagination = z.object({
 export type Pagination = z.infer<typeof Pagination>
 
 // ---------------------------------------------------------------------------
-// AI: picks + recommendations
+// AI: recommendations
 // ---------------------------------------------------------------------------
 
 export const PickConfidence = z.enum(["High", "Medium", "Low"])
@@ -532,37 +527,6 @@ export type PickConfidence = z.infer<typeof PickConfidence>
 
 export const PickResult = z.enum(["won", "lost", "push"]).nullable()
 export type PickResult = z.infer<typeof PickResult>
-
-const PickLeg = z.object({
-  marketId: MarketId,
-  /** The recommended outcome label (e.g. "Over 2.5", "Home Win"). */
-  outcome: z.string(),
-  /** Decimal odds at pick time. */
-  odds: z.number().positive(),
-  /** Optional handicap/total line, e.g. 2.5 for over/under markets. */
-  point: z.number().nullable().optional(),
-  confidence: PickConfidence,
-  /** Server-computed edge over fair odds, as a fraction (0.05 = 5%). */
-  edgePercentage: z.number().nullable().optional(),
-  /** Mr. Doge's reasoning for this pick, localized. */
-  rationale: z.array(z.string()),
-})
-export type PickLeg = z.infer<typeof PickLeg>
-
-export const AiPick = z.object({
-  id: z.string(),
-  matchId: MatchId,
-  /** Embedded match summary, if requested or available. */
-  match: Match.optional(),
-  pickType: z.string(),
-  legs: z.array(PickLeg),
-  totalOdds: z.number().positive(),
-  expiresAt: z.string().datetime({ offset: true }),
-  settled: z.boolean(),
-  result: PickResult,
-  createdAt: z.string().datetime({ offset: true }),
-})
-export type AiPick = z.infer<typeof AiPick>
 
 // ---------------------------------------------------------------------------
 // Team form (W/D/L aggregate over a team's recent completed matches)
