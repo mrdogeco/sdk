@@ -280,105 +280,87 @@ export const Clock = z.object({
 })
 export type Clock = z.infer<typeof Clock>
 
+// ---------------------------------------------------------------------------
+// MatchStats — discriminated union, one variant per supported sport
+// ---------------------------------------------------------------------------
+
 /**
- * Live match statistics, unified across all supported sports
- * (soccer, basketball, american football, baseball, ice hockey,
- * volleyball, handball).
- *
- * Coarse-grained by design — every stats update carries the full latest
- * state (see PROTOCOL.md §7). Clients replace, never merge.
- *
- * Default-strip mode (no `.passthrough()` / `.strict()`): unknown server
- * fields are dropped on parse, so the public contract is the explicit
- * field list below. Forward-compatible if the server adds a field the
- * client doesn't know yet — the client just ignores it.
- *
- * Sport semantics for the primary `homeScore`/`awayScore`:
- *   - Soccer / Ice Hockey: goals
- *   - Basketball / American Football: points
- *   - Baseball: runs
- *   - Volleyball: sets won (per-set point totals live in `periods`)
- *   - Handball: goals
- *
- * Customers infer the unit from `sport.name` on the parent `Match`.
+ * Supported sport names — the discriminant tag on `MatchStats` variants.
+ * Matches `match.sport.name` on the parent Match. New sports get added
+ * here AND a corresponding stats variant below.
  */
-export const MatchStats = z.object({
-  // ---- Unified clock + state + phase ------------------------------------
-  /** Unified clock object — see Clock. `null` when no clock data. */
+export const SportName = z.enum([
+  "soccer",
+  "basketball",
+  "american_football",
+  "baseball",
+  "ice_hockey",
+  "volleyball",
+  "handball",
+  "tennis",
+])
+export type SportName = z.infer<typeof SportName>
+
+/**
+ * Fields shared by every sport variant. Pulled into a constants object so
+ * each variant `.extend()`s the same baseline — clock + periods + primary
+ * score. Per-sport variants add their sport-specific stats on top.
+ *
+ * Sport semantics for `homeScore`/`awayScore`:
+ *   - Soccer / Ice Hockey / Handball: goals scored
+ *   - Basketball / American Football: total points
+ *   - Baseball: total runs
+ *   - Volleyball / Tennis: sets won (per-set point totals live in `periods`)
+ */
+const StatsBase = {
   clock: Clock.nullable(),
-
-  // ---- Per-period breakdown ---------------------------------------------
-  /**
-   * Per-period scores (quarters, halves, sets, innings, etc.). Empty for
-   * sports that don't expose a per-period breakdown.
-   */
   periods: z.array(Period).optional(),
-
-  // ---- Primary score (unified across all sports) -------------------------
-  /** Primary home score (goals / points / runs / sets — see header doc). */
   homeScore: z.number().int(),
-  /** Primary away score (goals / points / runs / sets — see header doc). */
   awayScore: z.number().int(),
+} as const
 
-  // ---- Cards (mainly soccer) --------------------------------------------
+// ---- Soccer ---------------------------------------------------------------
+
+export const SoccerStats = z.object({
+  sport: z.literal("soccer"),
+  ...StatsBase,
+  // Cards
   homeYellowCards: z.number().int().optional(),
   awayYellowCards: z.number().int().optional(),
   homeRedCards: z.number().int().optional(),
   awayRedCards: z.number().int().optional(),
-
-  // ---- Fouls (soccer, basketball) ---------------------------------------
+  // Fouls
   homeFouls: z.number().int().optional(),
   awayFouls: z.number().int().optional(),
-
-  // ---- Soccer-specific team stats ---------------------------------------
+  // Set-piece counts
   homeCorners: z.number().int().optional(),
   awayCorners: z.number().int().optional(),
-  homeTackles: z.number().int().optional(),
-  awayTackles: z.number().int().optional(),
-  homeOffsides: z.number().int().optional(),
-  awayOffsides: z.number().int().optional(),
   homeThrowIns: z.number().int().optional(),
   awayThrowIns: z.number().int().optional(),
   homeGoalKicks: z.number().int().optional(),
   awayGoalKicks: z.number().int().optional(),
   homePenaltyKicks: z.number().int().optional(),
   awayPenaltyKicks: z.number().int().optional(),
-  /** Soccer ball-possession share, 0–1 (e.g. 0.62 = 62%). */
-  homePossession: z.number().min(0).max(1).optional(),
-  awayPossession: z.number().min(0).max(1).optional(),
+  // Play stats
+  homeTackles: z.number().int().optional(),
+  awayTackles: z.number().int().optional(),
+  homeOffsides: z.number().int().optional(),
+  awayOffsides: z.number().int().optional(),
   homeShots: z.number().int().optional(),
   awayShots: z.number().int().optional(),
   homeShotsOnTarget: z.number().int().optional(),
   awayShotsOnTarget: z.number().int().optional(),
-  homeExpectedGoals: z.number().optional(),
-  awayExpectedGoals: z.number().optional(),
   homeWoodworkHits: z.number().int().optional(),
   awayWoodworkHits: z.number().int().optional(),
-
-  // ---- Basketball-specific ----------------------------------------------
-  /** Whether the team has reached the foul threshold for free throws. */
-  homeIsBonus: z.boolean().optional(),
-  awayIsBonus: z.boolean().optional(),
-  /** Whether the team currently has the ball (basketball discrete possession). */
-  homeHasPossession: z.boolean().optional(),
-  awayHasPossession: z.boolean().optional(),
-
-  // ---- Baseball-specific ------------------------------------------------
-  outs: z.number().int().optional(),
-  balls: z.number().int().optional(),
-  strikes: z.number().int().optional(),
-  /**
-   * Base-runner state. Shape is upstream-defined; passthrough for now.
-   * Will be promoted to a typed schema once we settle the contract.
-   */
-  bases: z.array(z.unknown()).optional(),
-
-  // ---- Volleyball-specific ----------------------------------------------
-  /** Whether the team is currently serving. */
-  homeServes: z.boolean().optional(),
-  awayServes: z.boolean().optional(),
-
-  // ---- Player-level arrays (soccer) -------------------------------------
+  /** Ball-possession share as a 0–1 fraction (e.g. `0.62` = 62%). */
+  homePossession: z.number().min(0).max(1).optional(),
+  awayPossession: z.number().min(0).max(1).optional(),
+  // Expected goals (xG)
+  homeExpectedGoals: z.number().optional(),
+  awayExpectedGoals: z.number().optional(),
+  /** Total stoppage/injury time announced in the current half. */
+  injuryMinutes: z.number().int().optional(),
+  // Player-level breakdowns
   homePlayersGoals: z.array(StatPlayer).optional(),
   awayPlayersGoals: z.array(StatPlayer).optional(),
   homePlayersAssists: z.array(StatPlayer).optional(),
@@ -396,7 +378,257 @@ export const MatchStats = z.object({
   homePlayersWoodworkHits: z.array(StatPlayer).optional(),
   awayPlayersWoodworkHits: z.array(StatPlayer).optional(),
 })
+export type SoccerStats = z.infer<typeof SoccerStats>
+
+// ---- Tennis --------------------------------------------------------------
+
+/**
+ * Tennis primary score = sets won. The upstream feed uses
+ * `player1*`/`player2*` field names which we normalize to
+ * `home*`/`away*` (player1 → home).
+ */
+export const TennisStats = z.object({
+  sport: z.literal("tennis"),
+  ...StatsBase,
+  /** Games won in the current (in-progress) set. */
+  homeGamesInCurrentSet: z.number().int().optional(),
+  awayGamesInCurrentSet: z.number().int().optional(),
+  /** Points in the current game, formatted: `"0"` / `"15"` / `"30"` / `"40"` / `"AD"`. */
+  homeCurrentGamePoints: z.string().optional(),
+  awayCurrentGamePoints: z.string().optional(),
+  /** Who is currently serving (mutually exclusive). */
+  homeServes: z.boolean().optional(),
+  awayServes: z.boolean().optional(),
+  /** True when the current game is a tiebreak. */
+  isInTieBreak: z.boolean().optional(),
+  /** Match format: 3 (best-of-3) or 5 (best-of-5). */
+  numberOfSets: z.number().int().optional(),
+  /** Court surface code as reported by the data feed (provider-specific). */
+  courtType: z.number().int().optional(),
+})
+export type TennisStats = z.infer<typeof TennisStats>
+
+// ---- Basketball ----------------------------------------------------------
+
+export const BasketballStats = z.object({
+  sport: z.literal("basketball"),
+  ...StatsBase,
+  homeFouls: z.number().int().optional(),
+  awayFouls: z.number().int().optional(),
+  /** Whether the team has reached the foul threshold for free-throw bonus. */
+  homeIsBonus: z.boolean().optional(),
+  awayIsBonus: z.boolean().optional(),
+  /** Discrete ball possession (mutually exclusive). */
+  homeHasPossession: z.boolean().optional(),
+  awayHasPossession: z.boolean().optional(),
+})
+export type BasketballStats = z.infer<typeof BasketballStats>
+
+// ---- American Football ---------------------------------------------------
+
+export const AmericanFootballStats = z.object({
+  sport: z.literal("american_football"),
+  ...StatsBase,
+})
+export type AmericanFootballStats = z.infer<typeof AmericanFootballStats>
+
+// ---- Baseball ------------------------------------------------------------
+
+export const BaseballStats = z.object({
+  sport: z.literal("baseball"),
+  ...StatsBase,
+  /** Current at-bat state. */
+  outs: z.number().int().optional(),
+  balls: z.number().int().optional(),
+  strikes: z.number().int().optional(),
+  /** Base-runner state. Shape passthrough until upstream contract stabilizes. */
+  bases: z.array(z.unknown()).optional(),
+})
+export type BaseballStats = z.infer<typeof BaseballStats>
+
+// ---- Ice Hockey ----------------------------------------------------------
+
+export const IceHockeyStats = z.object({
+  sport: z.literal("ice_hockey"),
+  ...StatsBase,
+})
+export type IceHockeyStats = z.infer<typeof IceHockeyStats>
+
+// ---- Volleyball ----------------------------------------------------------
+
+export const VolleyballStats = z.object({
+  sport: z.literal("volleyball"),
+  ...StatsBase,
+  /** Who is currently serving (mutually exclusive). */
+  homeServes: z.boolean().optional(),
+  awayServes: z.boolean().optional(),
+})
+export type VolleyballStats = z.infer<typeof VolleyballStats>
+
+// ---- Handball ------------------------------------------------------------
+
+export const HandballStats = z.object({
+  sport: z.literal("handball"),
+  ...StatsBase,
+})
+export type HandballStats = z.infer<typeof HandballStats>
+
+// ---- Discriminated union -------------------------------------------------
+
+/**
+ * Live match statistics. Discriminated by `sport` — narrow with
+ * `if (match.stats?.sport === "tennis") { … }` to access sport-specific
+ * fields. Common fields (`clock`, `periods`, `homeScore`, `awayScore`)
+ * are typed without narrowing.
+ *
+ * Coarse-grained by design — every stats update carries the full latest
+ * state (see PROTOCOL.md §7). Clients replace, never merge.
+ */
+export const MatchStats = z.discriminatedUnion("sport", [
+  SoccerStats,
+  TennisStats,
+  BasketballStats,
+  AmericanFootballStats,
+  BaseballStats,
+  IceHockeyStats,
+  VolleyballStats,
+  HandballStats,
+])
 export type MatchStats = z.infer<typeof MatchStats>
+
+// ---------------------------------------------------------------------------
+// Timeline — sport-tagged event log
+// ---------------------------------------------------------------------------
+
+/**
+ * Single timeline event. The shape is uniform across sports; the `type`
+ * field is sport-specific (see per-sport unions below — `SoccerTimelineEventType`
+ * etc. — for the known values).
+ *
+ * Sides are normalized: tennis `player1`/`player2` and the upstream `P1`/`P2`
+ * codes both collapse to `"home"` / `"away"`. Game-level events
+ * (start-of-match, end-of-period scoreboards) carry `side: "match"`.
+ *
+ * `captions` shape varies by event type. Examples per sport are in
+ * `reference/matches.mdx`. The first element is typically a time marker;
+ * remaining elements are team / player / score data.
+ */
+export const TimelineEvent = z.object({
+  /**
+   * Event kind. Open string — see `SoccerTimelineEventType` /
+   * `TennisTimelineEventType` / etc. for the documented values per sport.
+   * New event types may appear without an SDK update.
+   */
+  type: z.string(),
+  /**
+   * Which side the event belongs to. `"match"` is used for events that
+   * apply to the whole match (start/end of periods, halftime scoreboards).
+   */
+  side: z.enum(["home", "away", "match"]),
+  /**
+   * Phase identifier where the event occurred — `"1H"`/`"2H"` (soccer,
+   * handball), `"Q1"`–`"Q4"`/`"OT"` (basketball, American football),
+   * `"P1"`–`"P3"`/`"OT"` (ice hockey), `"S1"`–`"S5"`/`"TB"` (tennis,
+   * volleyball).
+   */
+  phase: z.string(),
+  /**
+   * Display strings — sport- and type-specific. See per-sport docs for
+   * positional meaning.
+   */
+  captions: z.array(z.string()),
+  /**
+   * Time offset from match start, in seconds. `0` for events that don't
+   * carry an in-play time (start-of-period markers, end-of-period
+   * scoreboards).
+   */
+  timeOffsetSeconds: z.number().int().nonnegative(),
+})
+export type TimelineEvent = z.infer<typeof TimelineEvent>
+
+// ---- Per-sport `type` unions (TypeScript only) ---------------------------
+// These are TS-level helpers for narrowing `TimelineEvent.type` per sport.
+// They're not enforced at runtime — the wire format allows any string so
+// new event types from upstream don't fail validation. Cast or compare to
+// these strings inside an `if (match.sport?.name === "...")` block.
+
+export type SoccerTimelineEventType =
+  | "StartOfMatch"
+  | "EndOfFirstHalf"
+  | "StartOfSecondHalf"
+  | "EndOfNormalTime"
+  | "GoalWithScorer"
+  | "OwnGoal"
+  | "ShotWithPlayer"
+  | "ShotOnTargetWithPlayer"
+  | "FoulWithPlayer"
+  | "TackleWithPlayer"
+  | "ThrowIn"
+  | "GoalKick"
+  | "Corner"
+  | "PenaltyKick"
+  | "YellowCardWithPlayer"
+  | "RedCardWithPlayer"
+  | "Substitution"
+
+export type TennisTimelineEventType =
+  | "GameWithPoints"
+  | "Game"
+  | "Set"
+  | "Tiebreak"
+
+export type BasketballTimelineEventType =
+  | "StartOfGame"
+  | "EndOfFirstQuarter"
+  | "StartOfSecondQuarter"
+  | "EndOfHalfTime"
+  | "StartOfThirdQuarter"
+  | "EndOfThirdQuarter"
+  | "StartOfFourthQuarter"
+  | "EndOfFourthQuarter"
+  | "StartOfOvertime"
+  | "EndOfOvertime"
+
+export type AmericanFootballTimelineEventType =
+  | "StartOfGame"
+  | "EndOfFirstQuarter"
+  | "StartOfSecondQuarter"
+  | "EndOfHalfTime"
+  | "StartOfThirdQuarter"
+  | "EndOfThirdQuarter"
+  | "StartOfFourthQuarter"
+  | "EndOfFourthQuarter"
+  | "StartOfOvertime"
+  | "EndOfOvertime"
+
+export type IceHockeyTimelineEventType =
+  | "StartOfGame"
+  | "EndOfFirstPeriod"
+  | "StartOfSecondPeriod"
+  | "EndOfSecondPeriod"
+  | "StartOfThirdPeriod"
+  | "EndOfThirdPeriod"
+  | "StartOfOvertime"
+  | "EndOfOvertime"
+  | "GoalWithoutScorer"
+
+export type VolleyballTimelineEventType =
+  | "SetWithPoints"
+  | "Set"
+
+export type HandballTimelineEventType =
+  | "StartOfGame"
+  | "EndOfFirstHalf"
+  | "StartOfSecondHalf"
+  | "EndOfNormalTime"
+  | "GoalWithoutScorer"
+
+/**
+ * Baseball timeline events. The data feed currently does not emit
+ * baseball events; `Match.timeline` for a baseball match is typically `[]`.
+ * Kept as a type alias for forward-compat once the feed starts emitting.
+ */
+export type BaseballTimelineEventType = string
 
 export const BetItem = z.object({
   id: BetItemId,
@@ -480,8 +712,24 @@ export const Match = z.object({
   sport: SportRef.nullable(),
   competition: CompetitionRef,
   region: RegionRef,
-  /** Present only on `completed` matches in list responses. */
+  /**
+   * Sport-tagged live statistics. Discriminated by `stats.sport`. Present
+   * on live and completed matches; absent for upcoming matches with no
+   * stats yet. Narrow with `match.stats?.sport === "<name>"` to access
+   * sport-specific fields. See per-sport variant types (`SoccerStats`,
+   * `TennisStats`, …) for the field set per sport.
+   */
   stats: MatchStats.nullable().optional(),
+  /**
+   * Match timeline — sport-tagged event log. Generic envelope (`type`,
+   * `side`, `phase`, `captions`, `timeOffsetSeconds`). Per-sport event-type
+   * unions (`SoccerTimelineEventType`, `TennisTimelineEventType`, …) are
+   * exported as TypeScript aliases for narrowing on `event.type`.
+   *
+   * Baseball matches return an empty timeline today — the data feed
+   * doesn't emit baseball events.
+   */
+  timeline: z.array(TimelineEvent).optional(),
 })
 export type Match = z.infer<typeof Match>
 
