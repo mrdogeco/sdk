@@ -100,6 +100,17 @@ export class Matches {
     )
   }
 
+  getLive(
+    params: MethodParams<"matches.getLive"> = {},
+    options?: CallOptions,
+  ): Promise<MethodResult<"matches.getLive">> {
+    return this.conn.call(
+      "matches.getLive",
+      { locale: this.defaults.locale, ...params },
+      options,
+    )
+  }
+
   async subscribeLive(
     params: MethodParams<"matches.subscribeLive"> = {},
     options?: CallOptions,

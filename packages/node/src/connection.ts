@@ -299,6 +299,11 @@ export class Connection {
         timer,
       }
     })
+    // Suppress the unhandled rejection that would occur when auth fails:
+    // if `authAck` throws first, nobody holds a reference to `welcomePromise`,
+    // so the subsequent `pendingWelcome.reject()` call in `handleClose` would
+    // escape as an unhandled rejection and crash the process.
+    welcomePromise.catch(() => {})
 
     const authAck = this.send("auth" as MethodName, { apiKey: this.config.apiKey } as never).catch(
       (err: Error) => {
