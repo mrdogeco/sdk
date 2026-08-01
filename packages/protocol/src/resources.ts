@@ -646,6 +646,13 @@ export const Market = z.object({
   id: MarketId,
   /** Market sysname, e.g. "SOCCER_MATCH_RESULT", "SOCCER_UNDER_OVER". */
   betType: z.string(),
+  /**
+   * Human-readable market name for the requested locale, e.g. "Match
+   * Result". Always populated — falls back through English, then a
+   * formatted version of `betType` (sport prefix stripped, underscores to
+   * spaces, title case) if no translation exists for this sysname yet.
+   */
+  displayName: z.string(),
   betItems: z.array(BetItem),
 })
 export type Market = z.infer<typeof Market>
