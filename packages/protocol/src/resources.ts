@@ -630,7 +630,7 @@ export type HandballTimelineEventType =
  */
 export type BaseballTimelineEventType = string
 
-export const BetItem = z.object({
+export const Line = z.object({
   id: BetItemId,
   /** Outcome code, e.g. "1", "X", "2", "O2.5", "GG". */
   code: z.string(),
@@ -639,8 +639,15 @@ export const BetItem = z.object({
   /** Decimal odds (e.g. 2.10). Other formats are not negotiated in v1. */
   price: z.number().positive(),
   isAvailable: z.boolean(),
+  /** ISO timestamp of the last odds update. Prelive: per-item DB write time. Live: feed ingestion time. */
+  updatedAt: z.string().optional(),
 })
-export type BetItem = z.infer<typeof BetItem>
+export type Line = z.infer<typeof Line>
+
+/** @deprecated Use `Line` instead. */
+export const BetItem = Line
+/** @deprecated Use `Line` instead. */
+export type BetItem = Line
 
 export const Market = z.object({
   id: MarketId,
@@ -653,7 +660,9 @@ export const Market = z.object({
    * spaces, title case) if no translation exists for this sysname yet.
    */
   displayName: z.string(),
-  betItems: z.array(BetItem),
+  lines: z.array(Line),
+  /** @deprecated Use `lines` instead. */
+  betItems: z.array(Line).optional(),
 })
 export type Market = z.infer<typeof Market>
 

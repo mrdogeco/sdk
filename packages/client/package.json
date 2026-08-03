@@ -1,6 +1,6 @@
 {
   "name": "@mrdoge/client",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Mr. Doge client SDK for browsers, React Native, and edge runtimes. Authenticates via a customer-minted JWT — never embeds the API key.",
   "license": "Apache-2.0",
   "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/client",

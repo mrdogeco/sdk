@@ -35,7 +35,7 @@ const RESOURCE_SCHEMAS = {
   VolleyballStats: resources.VolleyballStats,
   HandballStats: resources.HandballStats,
   TimelineEvent: resources.TimelineEvent,
-  BetItem: resources.BetItem,
+  Line: resources.Line,
   Market: resources.Market,
   Match: resources.Match,
   MatchDetail: resources.MatchDetail,

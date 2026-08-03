@@ -79,6 +79,7 @@ export type {
   HandballTimelineEventType,
   Market,
   MarketSelect,
+  Line,
   BetItem,
   Pagination,
   PickConfidence,

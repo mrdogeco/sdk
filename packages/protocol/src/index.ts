@@ -3,7 +3,7 @@
  *
  * - `envelope` — JSON-RPC 2.0 frames + error codes
  * - `resources` — Region, Competition, Team, Match, MatchDetail, MatchStats,
- *   Market, BetItem, Recommendation, Pagination
+ *   Market, Line, BetItem (deprecated), Recommendation, Pagination
  * - `events` — push event payloads (`subscription.event`, `subscription.closed`, `welcome`)
  * - `methods` — the v1 method registry
  *
