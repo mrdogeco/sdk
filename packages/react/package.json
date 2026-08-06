@@ -1,0 +1,61 @@
+{
+  "name": "@mrdoge/react",
+  "version": "0.1.7",
+  "description": "React hooks for @mrdoge/client — live matches, odds, and one-shot lookups, backed by a shared cache so components watching the same data never duplicate a subscription.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/mrdogeco/sdk/tree/main/packages/react",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrdogeco/sdk.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/mrdogeco/sdk/issues"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'TODO: vitest'",
+    "lint": "echo 'TODO: eslint'",
+    "prepublishOnly": "npm run build",
+    "release": "pnpm publish --access public --no-git-checks",
+    "release:dry": "pnpm publish --access public --dry-run --no-git-checks"
+  },
+  "keywords": [
+    "mrdoge",
+    "sports",
+    "odds",
+    "betting",
+    "realtime",
+    "websocket",
+    "sdk",
+    "react",
+    "hooks"
+  ],
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "@mrdoge/client": "workspace:*",
+    "@mrdoge/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,42 @@
+"use client"
+
+import { useMemo, useRef } from "react"
+import type { Market } from "@mrdoge/protocol"
+
+export type OddsMovement = "up" | "down" | "flat"
+
+/**
+ * Diffs each line's price against the price it had the last time this
+ * hook saw a market for the same match, so a UI can color a price green or
+ * red as live odds change. Movement isn't something the SDK computes or
+ * sends — `odds.subscribe` pushes a full replace-in-place snapshot on
+ * every change (see `useOdds`), so this hook remembers the previous
+ * snapshot's prices itself and compares. Pure diffing, no cache/store
+ * involved — nothing to fetch or share here.
+ *
+ * A line with no prior snapshot to compare against (first time seen, or
+ * the match/market just changed) has no entry in the result — nothing to
+ * compare yet, not a "flat" tick. An unchanged price also has no entry,
+ * on purpose: a color that never goes away would just be noise.
+ */
+export function useOddsMovement(market: Market | null | undefined): Record<string, OddsMovement> {
+  const previousPrices = useRef<Map<string, number>>(new Map())
+
+  return useMemo(() => {
+    if (!market) return {}
+
+    const movement: Record<string, OddsMovement> = {}
+    const nextPrices = new Map<string, number>()
+
+    for (const line of market.lines) {
+      const previous = previousPrices.current.get(line.id)
+      if (previous !== undefined && line.price !== previous) {
+        movement[line.id] = line.price > previous ? "up" : "down"
+      }
+      nextPrices.set(line.id, line.price)
+    }
+
+    previousPrices.current = nextPrices
+    return movement
+  }, [market])
+}
